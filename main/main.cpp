@@ -74,7 +74,8 @@ void IRAM_ATTR timer_callback(void* arg) {
     madgwick.updateIMU(gx, gy, gz, ax, ay, az, dt);
     roll = madgwick.getRoll();
     pitch = madgwick.getPitch();
-    yaw = gz;
+    // yaw = gz;
+    yaw   = madgwick.getYaw();
 }
 
 void mpu6050_task(void *pvParameters) {
@@ -133,7 +134,8 @@ void mpu6050_task_direct(void *pvParameters) {
         madgwick.updateIMU(gx, gy, gz, ax, ay, az, dt);
         roll  = madgwick.getRoll();
         pitch = madgwick.getPitch();
-        yaw   = gz;
+        // yaw   = gz;
+        yaw   = madgwick.getYaw();
     }
 }
 
@@ -156,8 +158,8 @@ void print_task(void *pvParameters)
 {
     while (1)
     {
-        printf("Yaw: %f, Pitch: %f, Roll: %f, dt: %f\n", yaw, pitch, roll, dt);
-        // printf("%f,%f,%f\n", roll, pitch, yaw);
+        // printf("Yaw: %f, Pitch: %f, Roll: %f, dt: %f\n", yaw, pitch, roll, dt);
+        printf("%f,%f,%f,%f\n", roll, pitch, yaw,dt);
         vTaskDelay(pdMS_TO_TICKS(10)); // Delay for 1 second
     }
 }
@@ -178,8 +180,8 @@ extern "C" void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    // xTaskCreatePinnedToCore(&mpu6050_task, "mpu6050_task", 1024 * 8, NULL, 5, NULL, 0);
-    xTaskCreatePinnedToCore(&mpu6050_task_direct, "mpu6050_task_direct", 1024 * 8, NULL, 5, NULL, 0);
+    xTaskCreatePinnedToCore(&mpu6050_task, "mpu6050_task", 1024 * 8, NULL, 5, NULL, 0);
+    // xTaskCreatePinnedToCore(&mpu6050_task_direct, "mpu6050_task_direct", 1024 * 8, NULL, 5, NULL, 0);
 
     xTaskCreatePinnedToCore(print_task, "print_task", 2048, NULL, 5, NULL, 1);
 
