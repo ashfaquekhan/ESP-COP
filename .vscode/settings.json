@@ -17,5 +17,6 @@
     "idf.flashType": "UART",
     "files.associations": {
         "mpu6050_6axis_motionapps20.h": "c"
-    }
+    },
+    "C_Cpp.errorSquiggles": "disabled"
 }

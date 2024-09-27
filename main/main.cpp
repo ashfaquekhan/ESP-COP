@@ -5,6 +5,7 @@
 #include "I2Cdev.h"
 #include "MPU6050.h"
 #include "MadgwickAHRS.h"
+#include <driver/gpio.h>
 
 #define RAD_TO_DEG (180.0 / M_PI)
 
@@ -17,6 +18,12 @@ Madgwick madgwick;
 // Sensitivity values
 float accel_sensitivity = 16384.0;
 float gyro_sensitivity = 131.0;
+
+float roll;
+float pitch;
+float yaw;  
+float dt;
+float ax, ay, az, gx, gy, gz;
 
 // Function to get scaled accelerometer and gyroscope data
 void _getMotion6(float *ax, float *ay, float *az, float *gx, float *gy, float *gz) {
@@ -50,47 +57,27 @@ void mpu6050_task(void *pvParameters) {
 
     // Variables for timing and initialization
     double last_time = TimeToSec();
-    bool initialized = false;
-    float initial_roll = 0.0, initial_pitch = 0.0, initial_yaw = 0.0;
-    int elapsed = 0, initial_period = 400;
+     esp_rom_gpio_pad_select_gpio(GPIO_NUM_11);
+    gpio_set_direction(GPIO_NUM_11, GPIO_MODE_OUTPUT);
+
 
     while (1) {
+        
+        // gpio_set_level(GPIO_NUM_11, 1); // Turn on the LED
         // Get scaled accelerometer and gyroscope values
-        float ax, ay, az, gx, gy, gz;
         _getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-
         // Calculate delta time since last update
-        float dt = TimeToSec() - last_time;
+        dt = TimeToSec() - last_time;
         last_time = TimeToSec();
 
         // Update Madgwick filter with new data
         madgwick.updateIMU(gx, gy, gz, ax, ay, az, dt);
-        float roll = madgwick.getRoll();
-        float pitch = madgwick.getPitch();
-        float yaw = madgwick.getYaw();
-
-        // Print the roll, pitch, and yaw every 10 iterations
-        if (elapsed > initial_period) {
-            if (!initialized) {
-                // Initialize starting orientation
-                initial_roll = roll;
-                initial_pitch = pitch;
-                initial_yaw = yaw;
-                initialized = true;
-                initial_period = 10;
-            }
-
-            float _roll = roll - initial_roll;
-            float _pitch = pitch - initial_pitch;
-            float _yaw = yaw - initial_yaw;
-
-            ESP_LOGI(TAG, "Roll: %f, Pitch: %f, Yaw: %f", _roll, _pitch, _yaw);
-
-            elapsed = 0;
-        }
-
-        elapsed++;
-        // No delay needed here to maximize speed
+        roll  = madgwick.getRoll();
+        pitch = madgwick.getPitch();
+        yaw   = madgwick.getYaw();
+        // ESP_LOGI(TAG, "Roll: %f, Pitch: %f, Yaw: %f,%lld",roll,pitch,yaw,cycleTime);
+        // printf("%f,%f,%f,%f\n",roll,pitch,yaw,dt);
+        // gpio_set_level(GPIO_NUM_11, 0); // Turn on the LED
     }
 }
 
@@ -115,4 +102,5 @@ extern "C" void app_main(void) {
 
     // Create the IMU task
     xTaskCreate(&mpu6050_task, "mpu6050_task", 1024 * 8, NULL, 5, NULL);
+
 }
