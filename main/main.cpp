@@ -12,6 +12,7 @@
 #include "MPU6050.h"
 #include "MadgwickAHRS.h"
 #include <driver/gpio.h>
+#include <esp_timer.h>
 
 #define RAD_TO_DEG (180.0 / M_PI)
 
@@ -30,6 +31,11 @@ float pitch;
 float yaw;  
 float dt;
 float ax, ay, az, gx, gy, gz;
+
+double current_time, last_time;
+#define LOOP_RATE_MS 1  // Desired loop rate (e.g., 100 ms)
+static esp_timer_handle_t timer; // Timer handle
+
 
 // Function to get scaled accelerometer and gyroscope data
 void _getMotion6(float *ax, float *ay, float *az, float *gx, float *gy, float *gz) {
@@ -55,37 +61,57 @@ double TimeToSec() {
     return (double)time_us / 1000000.0;
 }
 
-// IMU task
+void IRAM_ATTR timer_callback(void* arg) {
+    // Get scaled accelerometer and gyroscope values
+    _getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+    
+    // Calculate delta time since last update
+    current_time = TimeToSec(); // Ensure this returns time in seconds
+    dt = current_time - last_time;
+    last_time = current_time;
+
+    // Update Madgwick filter with new data
+    madgwick.updateIMU(gx, gy, gz, ax, ay, az, dt);
+    roll = madgwick.getRoll();
+    pitch = madgwick.getPitch();
+    yaw = gz;
+}
+
 void mpu6050_task(void *pvParameters) {
     // Initialize the MPU6050
     mpu.initialize();
     ESP_LOGI(TAG, "MPU6050 initialized, DeviceID=0x%x", mpu.getDeviceID());
 
-    // Variables for timing and initialization
-    double last_time = TimeToSec();
-     esp_rom_gpio_pad_select_gpio(GPIO_NUM_11);
-    gpio_set_direction(GPIO_NUM_11, GPIO_MODE_OUTPUT);
+    // Create the timer
+    const esp_timer_create_args_t timer_args = {
+        .callback = &timer_callback,
+        .name = "IMU Timer",
+        .arg = NULL, // Pass NULL if no additional data is needed
+        .dispatch_method = ESP_TIMER_TASK, // Use FreeRTOS task for callback
+        .skip_unhandled_events = false // Set this to false
+    };
 
-
-    while (1) {
-        
-        // gpio_set_level(GPIO_NUM_11, 1); // Turn on the LED
-        // Get scaled accelerometer and gyroscope values
-        _getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-        // Calculate delta time since last update
-        dt = TimeToSec() - last_time;
-        last_time = TimeToSec();
-
-        // Update Madgwick filter with new data
-        madgwick.updateIMU(gx, gy, gz, ax, ay, az, dt);
-        roll  = madgwick.getRoll();
-        pitch = madgwick.getPitch();
-        yaw   = gz;
-        // ESP_LOGI(TAG, "Roll: %f, Pitch: %f, Yaw: %f,%lld",roll,pitch,yaw,cycleTime);
-        // printf("%f,%f,%f,%f\n",roll,pitch,yaw,dt);
-        // gpio_set_level(GPIO_NUM_11, 0); // Turn on the LED
+    esp_err_t err = esp_timer_create(&timer_args, &timer);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to create timer: %s", esp_err_to_name(err));
+        return; // Handle error appropriately
     }
+
+    // Start the timer with the specified interval (in microseconds)
+    uint64_t timer_interval = LOOP_RATE_MS * 1000; // Convert to microseconds
+    esp_timer_start_periodic(timer, timer_interval);
+
+    // Main loop does not need to do anything as the timer handles updates
+    while (1) {
+        // Optionally, perform other tasks here, or simply yield to other tasks
+        vTaskDelay(pdMS_TO_TICKS(1000)); // Prevent task from using 100% CPU
+    }
+
+    // Cleanup timer when done (not reached in this case)
+    esp_timer_stop(timer);
+    esp_timer_delete(timer);
 }
+
 
 // I2C initialization
 void init_i2c(void) {
@@ -105,8 +131,8 @@ void print_task(void *pvParameters)
 {
     while (1)
     {
-        // printf("Yaw: %f, Pitch: %f, Roll: %f, dt: %f\n", roll, pitch, yaw, dt);
-        printf("%f,%f,%f\n", roll, pitch, yaw);
+        printf("Yaw: %f, Pitch: %f, Roll: %f, dt: %f\n", yaw, pitch, roll, dt);
+        // printf("%f,%f,%f\n", roll, pitch, yaw);
         vTaskDelay(pdMS_TO_TICKS(10)); // Delay for 1 second
     }
 }
@@ -126,6 +152,7 @@ extern "C" void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
     xTaskCreatePinnedToCore(&mpu6050_task, "mpu6050_task", 1024 * 8, NULL, 5, NULL, 0);
+    // xTaskCreatePinnedToCore(&mpu6050_task, "mpu6050_task", 2048, NULL, 5, NULL, 0);
     // xTaskCreate(&mpu6050_task, "mpu6050_task", 1024 * 8, NULL, 5, NULL);
     xTaskCreatePinnedToCore(print_task, "print_task", 2048, NULL, 5, NULL, 1);
 
