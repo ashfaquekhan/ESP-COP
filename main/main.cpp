@@ -85,10 +85,7 @@ void mpu6050_task(void *pvParameters) {
     // Create the timer
     const esp_timer_create_args_t timer_args = {
         .callback = &timer_callback,
-        .name = "IMU Timer",
-        .arg = NULL, // Pass NULL if no additional data is needed
-        .dispatch_method = ESP_TIMER_TASK, // Use FreeRTOS task for callback
-        .skip_unhandled_events = false // Set this to false
+        .name = "IMU Timer"
     };
 
     esp_err_t err = esp_timer_create(&timer_args, &timer);
@@ -111,7 +108,6 @@ void mpu6050_task(void *pvParameters) {
     esp_timer_stop(timer);
     esp_timer_delete(timer);
 }
-
 
 // I2C initialization
 void init_i2c(void) {
