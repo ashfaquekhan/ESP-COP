@@ -1,9 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2015-2021 Espressif Systems (Shanghai) CO LTD
- *
- * SPDX-License-Identifier: Apache-2.0
- */
-
 #include <stdio.h>
 #include "driver/i2c.h"
 #include "mpu6050.h"
