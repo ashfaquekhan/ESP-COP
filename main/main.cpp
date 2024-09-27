@@ -1,61 +1,119 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/queue.h"
 #include "esp_log.h"
 #include "driver/i2c.h"
 #include "I2Cdev.h"
-#include "MPU6050_6Axis_MotionApps20.h"
+#include "MPU6050.h"
+#include "MadgwickAHRS.h"
 
-#define TAG "IMU"
-#define RAD_TO_DEG (180.0/M_PI)
+#define RAD_TO_DEG (180.0 / M_PI)
 
+static const char *TAG = "IMU";
+
+// MPU6050 and Madgwick filter objects
 MPU6050 mpu;
-uint8_t fifoBuffer[64];  // FIFO storage buffer
-Quaternion q;            // quaternion container
-VectorFloat gravity;      // gravity vector
-float ypr[3];             // yaw/pitch/roll
+Madgwick madgwick;
 
-int64_t prevTime = 0;
-int64_t cycleTime =0;
-int64_t currentTime = esp_timer_get_time();
+// Queue handle
+QueueHandle_t xQueueTrans;
 
-void getYawPitchRoll() {
-    
-    prevTime = currentTime;
-    currentTime = esp_timer_get_time();
-    cycleTime = currentTime - prevTime;
+// Sensitivity values
+float accel_sensitivity = 16384.0;
+float gyro_sensitivity = 131.0;
 
-    mpu.dmpGetQuaternion(&q, fifoBuffer);
-    mpu.dmpGetGravity(&gravity, &q);
-    mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
-    // ESP_LOGI(TAG, "Yaw: %f, Pitch: %f, Roll: %f", ypr[0] * RAD_TO_DEG, ypr[1] * RAD_TO_DEG, ypr[2] * RAD_TO_DEG);
+// Structure to hold pose data
+typedef struct {
+    float roll;
+    float pitch;
+    float yaw;
+} POSE_t;
 
-    // ESP_LOGI(TAG, "Yaw: %f, Pitch: %f, Roll: %f (Elapsed Time: %lld us)", ypr[0] * RAD_TO_DEG, ypr[1] * RAD_TO_DEG, ypr[2] * RAD_TO_DEG, esp_timer_get_time());
-    printf("%f,%f,%f,%lld\n", ypr[0] * RAD_TO_DEG, ypr[1] * RAD_TO_DEG, ypr[2] * RAD_TO_DEG,cycleTime);
+// Function to get scaled accelerometer and gyroscope data
+void _getMotion6(float *ax, float *ay, float *az, float *gx, float *gy, float *gz) {
+    int16_t accel_x, accel_y, accel_z;
+    int16_t gyro_x, gyro_y, gyro_z;
 
+    // Read raw accelerometer and gyroscope data from the MPU6050
+    mpu.getMotion6(&accel_x, &accel_y, &accel_z, &gyro_x, &gyro_y, &gyro_z);
+
+    // Scale the raw values
+    *ax = (float)accel_x / accel_sensitivity;
+    *ay = (float)accel_y / accel_sensitivity;
+    *az = (float)accel_z / accel_sensitivity;
+
+    *gx = (float)gyro_x / gyro_sensitivity;
+    *gy = (float)gyro_y / gyro_sensitivity;
+    *gz = (float)gyro_z / gyro_sensitivity;
 }
-void imu_task(void *pvParameters) {
+
+// Function to get time in seconds
+double TimeToSec() {
+    int64_t time_us = esp_timer_get_time();
+    return (double)time_us / 1000000.0;
+}
+
+// IMU task
+void mpu6050_task(void *pvParameters) {
+    // Initialize the MPU6050
     mpu.initialize();
-    uint8_t buffer[1];
-    I2Cdev::readByte(MPU6050_ADDRESS_AD0_LOW, MPU6050_RA_WHO_AM_I, buffer);
-    ESP_LOGI(TAG, "Device ID: 0x%x", buffer[0]);
+    ESP_LOGI(TAG, "MPU6050 initialized, DeviceID=0x%x", mpu.getDeviceID());
 
-    uint8_t devStatus = mpu.dmpInitialize();
-    if (devStatus != 0) {
-        ESP_LOGE(TAG, "DMP Initialization failed with status: %d", devStatus);
-        vTaskDelete(NULL);
-    }
-
-    mpu.setDMPEnabled(true);
+    // Variables for timing and initialization
+    double last_time = TimeToSec();
+    bool initialized = false;
+    float initial_roll = 0.0, initial_pitch = 0.0, initial_yaw = 0.0;
+    int elapsed = 0, initial_period = 10;
 
     while (1) {
-        if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
-            getYawPitchRoll();
+        // Get scaled accelerometer and gyroscope values
+        float ax, ay, az, gx, gy, gz;
+        _getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+
+        // Calculate delta time since last update
+        float dt = TimeToSec() - last_time;
+        last_time = TimeToSec();
+
+        // Update Madgwick filter with new data
+        madgwick.updateIMU(gx, gy, gz, ax, ay, az, dt);
+        float roll = madgwick.getRoll();
+        float pitch = madgwick.getPitch();
+        float yaw = madgwick.getYaw();
+
+        // Print the roll, pitch, and yaw every 10 iterations
+        if (elapsed > initial_period) {
+            if (!initialized) {
+                // Initialize starting orientation
+                initial_roll = roll;
+                initial_pitch = pitch;
+                initial_yaw = yaw;
+                initialized = true;
+                initial_period = 10;
+            }
+
+            float _roll = roll - initial_roll;
+            float _pitch = pitch - initial_pitch;
+            float _yaw = yaw - initial_yaw;
+
+            ESP_LOGI(TAG, "Roll: %f, Pitch: %f, Yaw: %f", _roll, _pitch, _yaw);
+
+            // Create and send pose data via the queue
+            POSE_t pose;
+            pose.roll = _roll;
+            pose.pitch = _pitch;
+            pose.yaw = 0.0; // Not using yaw for now
+            xQueueSend(xQueueTrans, &pose, 100);
+
+            elapsed = 0;
         }
-        // vTaskDelay(1 / portTICK_PERIOD_MS);  // Match DMP refresh rate (~10Hz)
+
+        elapsed++;
+        // vTaskDelay(1);
     }
 }
-extern "C" void app_main(void) {
-    // Initialize I2C
+
+// I2C initialization
+void init_i2c(void) {
     i2c_config_t conf;
     conf.mode = I2C_MODE_MASTER;
     conf.sda_io_num = GPIO_NUM_15;
@@ -66,7 +124,17 @@ extern "C" void app_main(void) {
     conf.clk_flags = 0;
     ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_0, &conf));
     ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0));
+}
 
-    // Start IMU task
-    xTaskCreate(&imu_task, "IMU Task", 2048, NULL, 5, NULL);
+// Main function
+extern "C" void app_main(void) {
+    // Initialize I2C
+    init_i2c();
+
+    // Create a queue to hold pose data
+    xQueueTrans = xQueueCreate(10, sizeof(POSE_t));
+    configASSERT(xQueueTrans);
+
+    // Create the IMU task
+    xTaskCreate(&mpu6050_task, "mpu6050_task", 1024 * 8, NULL, 5, NULL);
 }
