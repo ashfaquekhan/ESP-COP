@@ -82,12 +82,6 @@ void mpu6050_task(void *pvParameters) {
     mpu.initialize();
     ESP_LOGI(TAG, "MPU6050 initialized, DeviceID=0x%x", mpu.getDeviceID());
 
-    // // Create the timer
-    // const esp_timer_create_args_t timer_args = {
-    //     .callback = &timer_callback,
-    //     .name = "IMU Timer"
-    // };
-    // Create the timer
     const esp_timer_create_args_t timer_args = {
         .callback = &timer_callback,          // Callback function
         .arg = NULL,                          // Argument passed to the callback (can be NULL if not needed)
@@ -102,20 +96,47 @@ void mpu6050_task(void *pvParameters) {
         return; // Handle error appropriately
     }
 
-    // Start the timer with the specified interval (in microseconds)
-    uint64_t timer_interval = LOOP_RATE_MS * 1000; // Convert to microseconds
+    uint64_t timer_interval = LOOP_RATE_MS * 1000; 
     esp_timer_start_periodic(timer, timer_interval);
 
-    // Main loop does not need to do anything as the timer handles updates
-    while (1) {
-        // Optionally, perform other tasks here, or simply yield to other tasks
+    while (1) 
+    {
         vTaskDelay(pdMS_TO_TICKS(1000)); // Prevent task from using 100% CPU
     }
-
-    // Cleanup timer when done (not reached in this case)
+    // Cleanup 
     esp_timer_stop(timer);
     esp_timer_delete(timer);
 }
+
+// IMU task
+void mpu6050_task_direct(void *pvParameters) {
+    // Initialize the MPU6050
+    mpu.initialize();
+    ESP_LOGI(TAG, "MPU6050 initialized, DeviceID=0x%x", mpu.getDeviceID());
+
+    // Variables for timing and initialization
+    double last_time = TimeToSec();
+     esp_rom_gpio_pad_select_gpio(GPIO_NUM_11);
+    gpio_set_direction(GPIO_NUM_11, GPIO_MODE_OUTPUT);
+
+
+    while (1) {
+        
+        // gpio_set_level(GPIO_NUM_11, 1); // Turn on the LED
+        // Get scaled accelerometer and gyroscope values
+        _getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+        // Calculate delta time since last update
+        dt = TimeToSec() - last_time;
+        last_time = TimeToSec();
+
+        // Update Madgwick filter with new data
+        madgwick.updateIMU(gx, gy, gz, ax, ay, az, dt);
+        roll  = madgwick.getRoll();
+        pitch = madgwick.getPitch();
+        yaw   = gz;
+    }
+}
+
 
 // I2C initialization
 void init_i2c(void) {
@@ -143,6 +164,7 @@ void print_task(void *pvParameters)
 
 // Function declarations from wifi_webserver.cpp
 extern "C" void wifi_webserver_task(void* pvParameters);
+
 // Main application, called from a specific core
 extern "C" void app_main(void) 
 {
@@ -155,11 +177,11 @@ extern "C" void app_main(void)
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
-    xTaskCreatePinnedToCore(&mpu6050_task, "mpu6050_task", 1024 * 8, NULL, 5, NULL, 0);
-    // xTaskCreatePinnedToCore(&mpu6050_task, "mpu6050_task", 2048, NULL, 5, NULL, 0);
-    // xTaskCreate(&mpu6050_task, "mpu6050_task", 1024 * 8, NULL, 5, NULL);
+
+    // xTaskCreatePinnedToCore(&mpu6050_task, "mpu6050_task", 1024 * 8, NULL, 5, NULL, 0);
+    xTaskCreatePinnedToCore(&mpu6050_task_direct, "mpu6050_task_direct", 1024 * 8, NULL, 5, NULL, 0);
+
     xTaskCreatePinnedToCore(print_task, "print_task", 2048, NULL, 5, NULL, 1);
 
-    // Create a task to run Wi-Fi and Web server on a specific core (e.g., core 1)
     xTaskCreatePinnedToCore(wifi_webserver_task, "wifi_webserver_task", 4096, NULL, 5, NULL, 1);
 }
