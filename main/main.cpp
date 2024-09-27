@@ -63,7 +63,7 @@ void mpu6050_task(void *pvParameters) {
     double last_time = TimeToSec();
     bool initialized = false;
     float initial_roll = 0.0, initial_pitch = 0.0, initial_yaw = 0.0;
-    int elapsed = 0, initial_period = 10;
+    int elapsed = 0, initial_period = 400;
 
     while (1) {
         // Get scaled accelerometer and gyroscope values
@@ -80,7 +80,7 @@ void mpu6050_task(void *pvParameters) {
         float pitch = madgwick.getPitch();
         float yaw = madgwick.getYaw();
 
-        // Print the roll, pitch, and yaw every 10 iterations
+        // Process and send data every 10 iterations
         if (elapsed > initial_period) {
             if (!initialized) {
                 // Initialize starting orientation
@@ -102,13 +102,12 @@ void mpu6050_task(void *pvParameters) {
             pose.roll = _roll;
             pose.pitch = _pitch;
             pose.yaw = 0.0; // Not using yaw for now
-            xQueueSend(xQueueTrans, &pose, 100);
+            xQueueSend(xQueueTrans, &pose, 0);
 
             elapsed = 0;
         }
 
         elapsed++;
-        // vTaskDelay(1);
     }
 }
 
