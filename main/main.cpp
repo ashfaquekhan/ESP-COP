@@ -95,7 +95,8 @@ void mpu6050_task(void *pvParameters) {
             float _pitch = pitch - initial_pitch;
             float _yaw = yaw - initial_yaw;
 
-            ESP_LOGI(TAG, "Roll: %f, Pitch: %f, Yaw: %f", _roll, _pitch, _yaw);
+            // ESP_LOGI(TAG,"%f,%f,%f", _roll, _pitch, _yaw);
+            printf("%f,%f,%f\n", _roll, _pitch, _yaw);
 
             // Create and send pose data via the queue
             POSE_t pose;
