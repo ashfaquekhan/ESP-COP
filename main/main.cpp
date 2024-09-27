@@ -1,6 +1,5 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "freertos/queue.h"
 #include "esp_log.h"
 #include "driver/i2c.h"
 #include "I2Cdev.h"
@@ -15,19 +14,9 @@ static const char *TAG = "IMU";
 MPU6050 mpu;
 Madgwick madgwick;
 
-// Queue handle
-QueueHandle_t xQueueTrans;
-
 // Sensitivity values
 float accel_sensitivity = 16384.0;
 float gyro_sensitivity = 131.0;
-
-// Structure to hold pose data
-typedef struct {
-    float roll;
-    float pitch;
-    float yaw;
-} POSE_t;
 
 // Function to get scaled accelerometer and gyroscope data
 void _getMotion6(float *ax, float *ay, float *az, float *gx, float *gy, float *gz) {
@@ -80,7 +69,7 @@ void mpu6050_task(void *pvParameters) {
         float pitch = madgwick.getPitch();
         float yaw = madgwick.getYaw();
 
-        // Process and send data every 10 iterations
+        // Print the roll, pitch, and yaw every 10 iterations
         if (elapsed > initial_period) {
             if (!initialized) {
                 // Initialize starting orientation
@@ -95,20 +84,13 @@ void mpu6050_task(void *pvParameters) {
             float _pitch = pitch - initial_pitch;
             float _yaw = yaw - initial_yaw;
 
-            // ESP_LOGI(TAG,"%f,%f,%f", _roll, _pitch, _yaw);
-            printf("%f,%f,%f\n", _roll, _pitch, _yaw);
-
-            // Create and send pose data via the queue
-            POSE_t pose;
-            pose.roll = _roll;
-            pose.pitch = _pitch;
-            pose.yaw = 0.0; // Not using yaw for now
-            xQueueSend(xQueueTrans, &pose, 0);
+            ESP_LOGI(TAG, "Roll: %f, Pitch: %f, Yaw: %f", _roll, _pitch, _yaw);
 
             elapsed = 0;
         }
 
         elapsed++;
+        // No delay needed here to maximize speed
     }
 }
 
@@ -130,10 +112,6 @@ void init_i2c(void) {
 extern "C" void app_main(void) {
     // Initialize I2C
     init_i2c();
-
-    // Create a queue to hold pose data
-    xQueueTrans = xQueueCreate(10, sizeof(POSE_t));
-    configASSERT(xQueueTrans);
 
     // Create the IMU task
     xTaskCreate(&mpu6050_task, "mpu6050_task", 1024 * 8, NULL, 5, NULL);
