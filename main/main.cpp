@@ -23,7 +23,7 @@ void getYawPitchRoll() {
     prevTime = currentTime;
     currentTime = esp_timer_get_time();
     cycleTime = currentTime - prevTime;
-    
+
     mpu.dmpGetQuaternion(&q, fifoBuffer);
     mpu.dmpGetGravity(&gravity, &q);
     mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
@@ -33,7 +33,6 @@ void getYawPitchRoll() {
     printf("%f,%f,%f,%lld\n", ypr[0] * RAD_TO_DEG, ypr[1] * RAD_TO_DEG, ypr[2] * RAD_TO_DEG,cycleTime);
 
 }
-
 void imu_task(void *pvParameters) {
     mpu.initialize();
     uint8_t buffer[1];
@@ -55,7 +54,6 @@ void imu_task(void *pvParameters) {
         // vTaskDelay(1 / portTICK_PERIOD_MS);  // Match DMP refresh rate (~10Hz)
     }
 }
-
 extern "C" void app_main(void) {
     // Initialize I2C
     i2c_config_t conf;
