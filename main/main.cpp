@@ -82,10 +82,18 @@ void mpu6050_task(void *pvParameters) {
     mpu.initialize();
     ESP_LOGI(TAG, "MPU6050 initialized, DeviceID=0x%x", mpu.getDeviceID());
 
+    // // Create the timer
+    // const esp_timer_create_args_t timer_args = {
+    //     .callback = &timer_callback,
+    //     .name = "IMU Timer"
+    // };
     // Create the timer
     const esp_timer_create_args_t timer_args = {
-        .callback = &timer_callback,
-        .name = "IMU Timer"
+        .callback = &timer_callback,          // Callback function
+        .arg = NULL,                          // Argument passed to the callback (can be NULL if not needed)
+        .dispatch_method = ESP_TIMER_TASK,    // Dispatch method
+        .name = "IMU Timer",                  // Name of the timer
+        .skip_unhandled_events = false         // Skip unhandled events (set to true if needed)
     };
 
     esp_err_t err = esp_timer_create(&timer_args, &timer);
