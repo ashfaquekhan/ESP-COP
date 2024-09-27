@@ -74,7 +74,7 @@ void mpu6050_task(void *pvParameters) {
         madgwick.updateIMU(gx, gy, gz, ax, ay, az, dt);
         roll  = madgwick.getRoll();
         pitch = madgwick.getPitch();
-        yaw   = madgwick.getYaw();
+        yaw   = gz;
         // ESP_LOGI(TAG, "Roll: %f, Pitch: %f, Yaw: %f,%lld",roll,pitch,yaw,cycleTime);
         // printf("%f,%f,%f,%f\n",roll,pitch,yaw,dt);
         // gpio_set_level(GPIO_NUM_11, 0); // Turn on the LED
@@ -95,12 +95,23 @@ void init_i2c(void) {
     ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0));
 }
 
+void print_task(void *pvParameters)
+{
+    while (1)
+    {
+        printf("Yaw: %f, Pitch: %f, Roll: %f, dt: %f\n", roll, pitch, yaw, dt);
+        vTaskDelay(pdMS_TO_TICKS(10)); // Delay for 1 second
+    }
+}
+
 // Main function
 extern "C" void app_main(void) {
     // Initialize I2C
     init_i2c();
 
     // Create the IMU task
-    xTaskCreate(&mpu6050_task, "mpu6050_task", 1024 * 8, NULL, 5, NULL);
-
+    // Assuming you want to pin the task to Core 1
+    xTaskCreatePinnedToCore(&mpu6050_task, "mpu6050_task", 1024 * 8, NULL, 5, NULL, 0);
+    // xTaskCreate(&mpu6050_task, "mpu6050_task", 1024 * 8, NULL, 5, NULL);
+    xTaskCreatePinnedToCore(print_task, "print_task", 2048, NULL, 5, NULL, 1);
 }
