@@ -8,43 +8,59 @@
 #include "esp_http_server.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "MadgwickAHRS.h"
+
+extern Madgwick madgwick;
 
 #define WIFI_SSID      "K.G.F-Extension"
 #define WIFI_PASS      "ashfaque92786"
 #define TAG            "example"
 
 // Slider values
-int slider1_value = 0;
-int slider2_value = 0;
-int slider3_value = 0;
-int slider4_value = 0;
-int slider5_value = 0;
+float slider1_value = 0.0f;
+float slider2_value = 0.0f;
+float slider3_value = 0.0f;
+float slider4_value = 0.0f;
+float slider5_value = 0.0f;
 
-// HTML content for the webpage
+// HTML content for the webpage with input fields and buttons
 const char* html_content = "<!DOCTYPE html>\
 <html>\
 <head>\
-<title>ESP32 Sliders</title>\
-<style>\
-  .slider { width: 300px; }\
-</style>\
+<title>ESP32 Float Input</title>\
 </head>\
 <body>\
-<h2>Bhaiya, the values are updated from the sliders</h2>\
-<label for='slider1'>Slider 1:</label>\
-<input type='range' min='0' max='100' value='0' class='slider' id='slider1' onchange='sendSliderValue(1, this.value)'><br><br>\
-<label for='slider2'>Slider 2:</label>\
-<input type='range' min='0' max='100' value='0' class='slider' id='slider2' onchange='sendSliderValue(2, this.value)'><br><br>\
-<label for='slider3'>Slider 3:</label>\
-<input type='range' min='0' max='100' value='0' class='slider' id='slider3' onchange='sendSliderValue(3, this.value)'><br><br>\
-<label for='slider4'>Slider 4:</label>\
-<input type='range' min='0' max='100' value='0' class='slider' id='slider4' onchange='sendSliderValue(4, this.value)'><br><br>\
-<label for='slider5'>Slider 5:</label>\
-<input type='range' min='0' max='100' value='0' class='slider' id='slider5' onchange='sendSliderValue(5, this.value)'><br><br>\
+<h2>Set Float Values</h2>\
+<div>\
+  <label for='input1'>Value 1:</label>\
+  <input type='number' id='input1' value='0.0' step='0.001' placeholder='Enter value' />\
+  <button onclick='sendValue(1)'>Send</button><br><br>\
+</div>\
+<div>\
+  <label for='input2'>Value 2:</label>\
+  <input type='number' id='input2' value='0.0' step='0.001' placeholder='Enter value' />\
+  <button onclick='sendValue(2)'>Send</button><br><br>\
+</div>\
+<div>\
+  <label for='input3'>Value 3:</label>\
+  <input type='number' id='input3' value='0.0' step='0.001' placeholder='Enter value' />\
+  <button onclick='sendValue(3)'>Send</button><br><br>\
+</div>\
+<div>\
+  <label for='input4'>Value 4:</label>\
+  <input type='number' id='input4' value='0.0' step='0.001' placeholder='Enter value' />\
+  <button onclick='sendValue(4)'>Send</button><br><br>\
+</div>\
+<div>\
+  <label for='input5'>Value 5:</label>\
+  <input type='number' id='input5' value='0.0' step='0.001' placeholder='Enter value' />\
+  <button onclick='sendValue(5)'>Send</button><br><br>\
+</div>\
 <script>\
-function sendSliderValue(slider, value) {\
+function sendValue(slider) {\
+    var value = document.getElementById('input' + slider).value;\
     var xhr = new XMLHttpRequest();\
-    xhr.open('GET', '/slider?slider=' + slider + '&value=' + value, true);\
+    xhr.open('GET', '/slider?slider=' + slider + '&value=' + parseFloat(value).toFixed(3), true);\
     xhr.send();\
 }\
 </script>\
@@ -61,14 +77,15 @@ esp_err_t get_handler(httpd_req_t *req) {
 esp_err_t slider_handler(httpd_req_t *req) {
     char* buf;
     size_t buf_len;
-    int slider, value;
+    int slider;
+    float value;
 
     buf_len = httpd_req_get_url_query_len(req) + 1;
     if (buf_len > 1) {
-        buf = (char*) malloc(buf_len);  // Cast malloc to (char*)
+        buf = (char*) malloc(buf_len);  
         if (httpd_req_get_url_query_str(req, buf, buf_len) == ESP_OK) {
-            sscanf(buf, "slider=%d&value=%d", &slider, &value);
-            ESP_LOGI(TAG, "Slider %d set to %d", slider, value);
+            sscanf(buf, "slider=%d&value=%f", &slider, &value);
+            ESP_LOGI(TAG, "Slider %d set to %.3f", slider, value);
 
             // Update slider values based on the slider number
             switch (slider) {

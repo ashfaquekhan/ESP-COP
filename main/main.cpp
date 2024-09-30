@@ -159,7 +159,7 @@ void print_task(void *pvParameters)
     while (1)
     {
         // printf("Yaw: %f, Pitch: %f, Roll: %f, dt: %f\n", yaw, pitch, roll, dt);
-        printf("%f,%f,%f,%f\n", roll, pitch, yaw,dt);
+        // printf("%f,%f,%f,%f\n", roll, pitch, yaw,dt);
         vTaskDelay(pdMS_TO_TICKS(10)); // Delay for 1 second
     }
 }

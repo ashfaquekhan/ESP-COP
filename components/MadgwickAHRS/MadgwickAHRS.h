@@ -69,6 +69,14 @@ public:
         if (!anglesComputed) computeAngles();
         return yaw;
     }
+    float getBeta()
+    {
+        return float(beta);
+    }
+    void setBeta(float nbeta)
+    {
+        beta=nbeta;
+    }
 };
 #endif
 
