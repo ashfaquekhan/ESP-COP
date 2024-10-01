@@ -89,7 +89,10 @@ esp_err_t slider_handler(httpd_req_t *req) {
 
             // Update slider values based on the slider number
             switch (slider) {
-                case 1: slider1_value = value; break;
+                case 1:
+                slider1_value = value;
+                madgwick.setBeta(value); 
+                break;
                 case 2: slider2_value = value; break;
                 case 3: slider3_value = value; break;
                 case 4: slider4_value = value; break;

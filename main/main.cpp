@@ -13,6 +13,7 @@
 #include "MadgwickAHRS.h"
 #include <driver/gpio.h>
 #include <esp_timer.h>
+#include <driver/ledc.h>
 
 #define RAD_TO_DEG (180.0 / M_PI)
 
@@ -102,7 +103,7 @@ void mpu6050_task(void *pvParameters) {
 
     while (1) 
     {
-        vTaskDelay(pdMS_TO_TICKS(1000)); // Prevent task from using 100% CPU
+         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
     // Cleanup 
     esp_timer_stop(timer);
@@ -160,7 +161,8 @@ void print_task(void *pvParameters)
     {
         // printf("Yaw: %f, Pitch: %f, Roll: %f, dt: %f\n", yaw, pitch, roll, dt);
         // printf("%f,%f,%f,%f\n", roll, pitch, yaw,dt);
-        vTaskDelay(pdMS_TO_TICKS(10)); // Delay for 1 second
+        printf("%f,%f\n", roll, pitch);
+        vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 }
 
@@ -183,7 +185,7 @@ extern "C" void app_main(void)
     xTaskCreatePinnedToCore(&mpu6050_task, "mpu6050_task", 1024 * 8, NULL, 5, NULL, 0);
     // xTaskCreatePinnedToCore(&mpu6050_task_direct, "mpu6050_task_direct", 1024 * 8, NULL, 5, NULL, 0);
 
-    xTaskCreatePinnedToCore(print_task, "print_task", 2048, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(print_task, "print_task", 4096, NULL, 5, NULL, 1);
 
     xTaskCreatePinnedToCore(wifi_webserver_task, "wifi_webserver_task", 4096, NULL, 5, NULL, 1);
 }
