@@ -161,7 +161,7 @@ void print_task(void *pvParameters)
     {
         // printf("Yaw: %f, Pitch: %f, Roll: %f, dt: %f\n", yaw, pitch, roll, dt);
         // printf("%f,%f,%f,%f\n", roll, pitch, yaw,dt);
-        printf("%f,%f\n", roll, pitch);
+        printf("%.2f,%.2f\n", roll, pitch);
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 }
