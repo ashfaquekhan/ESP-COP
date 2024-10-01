@@ -11,6 +11,7 @@
 #include "MadgwickAHRS.h"
 
 extern Madgwick madgwick;
+extern float alpha;
 
 #define WIFI_SSID      "K.G.F-Extension"
 #define WIFI_PASS      "ashfaque92786"
@@ -93,7 +94,9 @@ esp_err_t slider_handler(httpd_req_t *req) {
                 slider1_value = value;
                 madgwick.setBeta(value); 
                 break;
-                case 2: slider2_value = value; break;
+                case 2: slider2_value = value;
+                alpha=value;
+                break;
                 case 3: slider3_value = value; break;
                 case 4: slider4_value = value; break;
                 case 5: slider5_value = value; break;

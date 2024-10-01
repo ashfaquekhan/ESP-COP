@@ -19,6 +19,14 @@
 
 #define CONSTRAIN(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
 
+#define LOW_PASS_FILTER(input, output, prev_output, alpha) \
+    do { \
+        (output) = (alpha) * (input) + (1.0 - (alpha)) * (prev_output); \
+        (prev_output) = (output); \
+    } while (0)
+
+
+
 static const char *TAG = "IMU";
 
 // MPU6050 and Madgwick filter objects
@@ -35,18 +43,22 @@ float yaw;
 float dt;
 float ax, ay, az, gx, gy, gz;
 
-float rKp,pKp,yKp;
-float rKi,pKi,yKi;
-float rKd,pKd,yKd;
+float rKp=0.2,rKi=0.01,rKd=0.4;
+float pKp=0.2,pKi=0.01,pKd=0.4;
+float yKp=0.2,yKi=0.01,yKd=0.4;
 
 float errR,errP,errY;
 float iR,iP,iY;
 float iRprv,iPprv,iYprv;
 float dR,dP,dY;
+float fdR,fdP,fdY;
+float fdRprv,fdPprv,fdYprv;
+
 float rPID,pPID,yPID;
 float rSet,pSet,ySet;
 float iLimit;
 int throt; 
+float alpha(0.03);
 
 double current_time, last_time;
 #define LOOP_RATE_MS 1  // Desired loop rate (e.g., 100 ms)
@@ -159,12 +171,13 @@ void mpu6050_task_direct(void *pvParameters) {
         
         errP = pSet - pitch;
         iP = iPprv + errP * dt;
-        if(throt < 80){iP=0;} //clamp
+        // if(throt < 80){iP=0;} //clamp
         iP = CONSTRAIN(iP,-iLimit,iLimit);//windup 
         dP = gy;
-        rPID = 0.01 * (pKp*errP + pKi*iP - pKd*dP);
-
-        
+        LOW_PASS_FILTER(dP,fdP,fdPprv,alpha);
+        // fdPprv=fdP;
+        pPID = 0.01 * (pKp*errP + pKi*iP - pKd*dP);
+        iPprv =iP;
 
     }
 }
@@ -190,7 +203,8 @@ void print_task(void *pvParameters)
     {
         // printf("Yaw: %f, Pitch: %f, Roll: %f, dt: %f\n", yaw, pitch, roll, dt);
         // printf("%f,%f,%f,%f\n", roll, pitch, yaw,dt);
-        printf("%.2f,%.2f\n", roll, pitch);
+        // printf("%.2f,%.2f,%.2f\n",pitch, pPID,gy);
+        printf("%.2f,%.2f\n",fdP,gy);
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 }
@@ -211,10 +225,12 @@ extern "C" void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    xTaskCreatePinnedToCore(&mpu6050_task, "mpu6050_task", 1024 * 8, NULL, 5, NULL, 0);
-    // xTaskCreatePinnedToCore(&mpu6050_task_direct, "mpu6050_task_direct", 1024 * 8, NULL, 5, NULL, 0);
+    // xTaskCreatePinnedToCore(&mpu6050_task, "mpu6050_task", 1024 * 8, NULL, 5, NULL, 0);
+    xTaskCreatePinnedToCore(&mpu6050_task_direct, "mpu6050_task_direct", 1024 * 8, NULL, 5, NULL, 0);
 
     xTaskCreatePinnedToCore(print_task, "print_task", 4096, NULL, 5, NULL, 1);
 
     xTaskCreatePinnedToCore(wifi_webserver_task, "wifi_webserver_task", 4096, NULL, 5, NULL, 1);
 }
+
+
