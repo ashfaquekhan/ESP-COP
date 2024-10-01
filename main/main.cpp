@@ -17,6 +17,8 @@
 
 #define RAD_TO_DEG (180.0 / M_PI)
 
+#define CONSTRAIN(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
+
 static const char *TAG = "IMU";
 
 // MPU6050 and Madgwick filter objects
@@ -32,6 +34,19 @@ float pitch;
 float yaw;  
 float dt;
 float ax, ay, az, gx, gy, gz;
+
+float rKp,pKp,yKp;
+float rKi,pKi,yKi;
+float rKd,pKd,yKd;
+
+float errR,errP,errY;
+float iR,iP,iY;
+float iRprv,iPprv,iYprv;
+float dR,dP,dY;
+float rPID,pPID,yPID;
+float rSet,pSet,ySet;
+float iLimit;
+int throt; 
 
 double current_time, last_time;
 #define LOOP_RATE_MS 1  // Desired loop rate (e.g., 100 ms)
@@ -75,8 +90,9 @@ void IRAM_ATTR timer_callback(void* arg) {
     madgwick.updateIMU(gx, gy, gz, ax, ay, az, dt);
     roll = madgwick.getRoll();
     pitch = madgwick.getPitch();
-    // yaw = gz;
-    yaw   = madgwick.getYaw();
+    yaw = gz;
+    // yaw   = madgwick.getYaw();
+
 }
 
 void mpu6050_task(void *pvParameters) {
@@ -118,10 +134,13 @@ void mpu6050_task_direct(void *pvParameters) {
 
     // Variables for timing and initialization
     double last_time = TimeToSec();
-     esp_rom_gpio_pad_select_gpio(GPIO_NUM_11);
+    esp_rom_gpio_pad_select_gpio(GPIO_NUM_11);
     gpio_set_direction(GPIO_NUM_11, GPIO_MODE_OUTPUT);
-
-
+    
+    pSet=0;
+    rSet=0;
+    ySet=0;
+    iLimit=10;
     while (1) {
         
         // gpio_set_level(GPIO_NUM_11, 1); // Turn on the LED
@@ -135,8 +154,18 @@ void mpu6050_task_direct(void *pvParameters) {
         madgwick.updateIMU(gx, gy, gz, ax, ay, az, dt);
         roll  = madgwick.getRoll();
         pitch = madgwick.getPitch();
-        // yaw   = gz;
-        yaw   = madgwick.getYaw();
+        yaw   = gz;
+        // yaw   = madgwick.getYaw();
+        
+        errP = pSet - pitch;
+        iP = iPprv + errP * dt;
+        if(throt < 80){iP=0;} //clamp
+        iP = CONSTRAIN(iP,-iLimit,iLimit);//windup 
+        dP = gy;
+        rPID = 0.01 * (pKp*errP + pKi*iP - pKd*dP);
+
+        
+
     }
 }
 
