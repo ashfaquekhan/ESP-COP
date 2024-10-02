@@ -34,7 +34,7 @@
 
 static const char *TAG = "IMU";
 
-// MPU6050 and Madgwick filter objects
+// MPU6050 and Madgwick filter objects 
 MPU6050 mpu;
 Madgwick madgwick;
 
