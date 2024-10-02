@@ -49,7 +49,7 @@ float dt;
 float ax, ay, az, gx, gy, gz;
 
 float rKp=6.0,rKi=0.006,rKd=0.69;
-float pKp=0.0,pKi=0.0,pKd=0.0;
+float pKp=6.0,pKi=0.006,pKd=0.69;
 float yKp=0.0,yKi=0.0,yKd=0.0;
 
 float errR,errP,errY;
@@ -129,7 +129,7 @@ double TimeToSec() {
 
 void initfunc()
 {
-    pSet=0;
+    pSet=-3;
     rSet=0;
     ySet=0;
     iLimit=10000;
@@ -189,6 +189,10 @@ void taskfunc()
             ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1);
             ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2);
             ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3);
+
+            iP=0;
+            iR=0;
+            iY=0;
         }
 
 }
