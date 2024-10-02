@@ -48,7 +48,7 @@ float yaw;
 float dt;
 float ax, ay, az, gx, gy, gz;
 
-float rKp=0.0,rKi=0.0,rKd=0.0;
+float rKp=6.0,rKi=0.006,rKd=0.69;
 float pKp=0.0,pKi=0.0,pKd=0.0;
 float yKp=0.0,yKi=0.0,yKd=0.0;
 
