@@ -25,6 +25,11 @@
         (prev_output) = (output); \
     } while (0)
 
+#define TIME_BASED_LOW_PASS_FILTER(input, output, prev_output, T, period) \
+    { \
+        (output) = ((T) / ((T) + (period))) * (prev_output) + ((period) / ((T) + (period))) * (input); \
+        (prev_output) = (output); \
+    }
 
 
 static const char *TAG = "IMU";
@@ -43,13 +48,13 @@ float yaw;
 float dt;
 float ax, ay, az, gx, gy, gz;
 
-float rKp=0.2,rKi=0.01,rKd=0.4;
-float pKp=0.2,pKi=0.01,pKd=0.4;
-float yKp=0.2,yKi=0.01,yKd=0.4;
+float rKp=0.0,rKi=0.0,rKd=0.0;
+float pKp=0.0,pKi=0.0,pKd=0.0;
+float yKp=0.0,yKi=0.0,yKd=0.0;
 
 float errR,errP,errY;
 float iR,iP,iY;
-float iRprv,iPprv,iYprv;
+float iRprv(0.0),iPprv(0.0),iYprv(0.0);
 float dR,dP,dY;
 float fdR,fdP,fdY;
 float fdRprv,fdPprv,fdYprv;
@@ -57,12 +62,44 @@ float fdRprv,fdPprv,fdYprv;
 float rPID,pPID,yPID;
 float rSet,pSet,ySet;
 float iLimit;
-int throt; 
-float alpha(0.03);
+int throt = 50; 
+float alpha(0.015); //0.015~0.03
+float period(0.001);
+float tKf(0.003);
+bool motrState=false;
 
 double current_time, last_time;
-#define LOOP_RATE_MS 1  // Desired loop rate (e.g., 100 ms)
+#define LOOP_RATE_MS 1  // Desired loop rate in MS(e.g., 100 ms)
 static esp_timer_handle_t timer; // Timer handle
+
+// LEDC timer configuration
+void init_ledc_timer() {
+    ledc_timer_config_t ledc_timer = {
+        .speed_mode = LEDC_LOW_SPEED_MODE,     // High-speed mode
+        .duty_resolution = LEDC_TIMER_8_BIT,    // 8-bit resolution
+        .timer_num = LEDC_TIMER_2,              // Timer 2
+        .freq_hz = 10000,                       // 10 kHz PWM frequency
+        .clk_cfg = LEDC_AUTO_CLK                // Auto-select clock
+    };
+    ledc_timer_config(&ledc_timer);
+}
+
+// LEDC channel configuration
+void init_ledc_channel(ledc_channel_t channel, int gpio_num) {
+    ledc_channel_config_t ledc_channel = {
+        .gpio_num = gpio_num,                   // Set GPIO pin
+        .speed_mode = LEDC_LOW_SPEED_MODE,     // High-speed mode
+        .channel =  channel,                     // Channel
+        .intr_type = LEDC_INTR_DISABLE,
+        .timer_sel = LEDC_TIMER_2,               // Use Timer 2
+        .duty = 0,                              // Set initial duty to 0 (motor off)
+        .hpoint = 0,                            // Default
+        .flags = {                              // Initialize flags
+            .output_invert = 0                  // Disable output inversion (set to 1 to enable)
+        }
+    };
+    ledc_channel_config(&ledc_channel);
+}
 
 
 // Function to get scaled accelerometer and gyroscope data
@@ -104,6 +141,17 @@ void IRAM_ATTR timer_callback(void* arg) {
     pitch = madgwick.getPitch();
     yaw = gz;
     // yaw   = madgwick.getYaw();
+
+    errP = pSet - pitch;
+    iP = iPprv + errP*dt;
+    if(throt < 50){iP=0;} //clamp
+    iP = CONSTRAIN(iP,-iLimit,iLimit);//windup 
+    dP = gy;
+    // LOW_PASS_FILTER(dP,fdP,fdPprv,alpha);
+    TIME_BASED_LOW_PASS_FILTER(dP,fdP,fdPprv,tKf,period);
+    // fdPprv=fdP;
+    pPID = 0.01 * (pKp*errP + pKi*iP - pKd*dP);//scale
+    iPprv =iP;
 
 }
 
@@ -152,7 +200,7 @@ void mpu6050_task_direct(void *pvParameters) {
     pSet=0;
     rSet=0;
     ySet=0;
-    iLimit=10;
+    iLimit=100;
     while (1) {
         
         // gpio_set_level(GPIO_NUM_11, 1); // Turn on the LED
@@ -170,14 +218,15 @@ void mpu6050_task_direct(void *pvParameters) {
         // yaw   = madgwick.getYaw();
         
         errP = pSet - pitch;
-        iP = iPprv + errP * dt;
-        // if(throt < 80){iP=0;} //clamp
+        iP = iPprv + errP*dt;
+        if(throt < 50){iP=0;} //clamp
         iP = CONSTRAIN(iP,-iLimit,iLimit);//windup 
         dP = gy;
         LOW_PASS_FILTER(dP,fdP,fdPprv,alpha);
-        // fdPprv=fdP;
-        pPID = 0.01 * (pKp*errP + pKi*iP - pKd*dP);
+        // TIME_BASED_LOW_PASS_FILTER(dP,fdP,fdPprv,tKf,period);
+        pPID = 0.01 * (pKp*errP + pKi*iP - pKd*dP);//scale
         iPprv =iP;
+        
 
     }
 }
@@ -202,9 +251,9 @@ void print_task(void *pvParameters)
     while (1)
     {
         // printf("Yaw: %f, Pitch: %f, Roll: %f, dt: %f\n", yaw, pitch, roll, dt);
-        // printf("%f,%f,%f,%f\n", roll, pitch, yaw,dt);
+        printf("%.2f,%.2f,%.2f,%.2f\n", roll, pitch, yaw,fdP);
         // printf("%.2f,%.2f,%.2f\n",pitch, pPID,gy);
-        printf("%.2f,%.2f\n",fdP,gy);
+        // printf("%.2f,%.2f\n",fdP,gy);
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 }
@@ -216,6 +265,13 @@ extern "C" void wifi_webserver_task(void* pvParameters);
 extern "C" void app_main(void) 
 {
     init_i2c();
+    init_ledc_timer();
+    // Initialize 4 LEDC channels for 4 GPIO pins
+    init_ledc_channel(LEDC_CHANNEL_0, 17); 
+    init_ledc_channel(LEDC_CHANNEL_1, 18); 
+    init_ledc_channel(LEDC_CHANNEL_2, 33); 
+    init_ledc_channel(LEDC_CHANNEL_3, 34); 
+
 
     // Initialize NVS
     esp_err_t ret = nvs_flash_init();
@@ -224,9 +280,20 @@ extern "C" void app_main(void)
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 10);
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, 10);
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2, 10);
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3, 10);
 
-    // xTaskCreatePinnedToCore(&mpu6050_task, "mpu6050_task", 1024 * 8, NULL, 5, NULL, 0);
-    xTaskCreatePinnedToCore(&mpu6050_task_direct, "mpu6050_task_direct", 1024 * 8, NULL, 5, NULL, 0);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3);
+
+    // ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 50);
+
+    xTaskCreatePinnedToCore(&mpu6050_task, "mpu6050_task", 1024 * 8, NULL, 5, NULL, 0);
+    // xTaskCreatePinnedToCore(&mpu6050_task_direct, "mpu6050_task_direct", 1024 * 8, NULL, 5, NULL, 0);
 
     xTaskCreatePinnedToCore(print_task, "print_task", 4096, NULL, 5, NULL, 1);
 

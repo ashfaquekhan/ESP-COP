@@ -12,50 +12,58 @@
 
 extern Madgwick madgwick;
 extern float alpha;
+extern float pKp,pKi,pKd;
+extern int throt;
+extern float tKf;
 
 #define WIFI_SSID      "K.G.F-Extension"
 #define WIFI_PASS      "ashfaque92786"
 #define TAG            "example"
 
 // Slider values
-float slider1_value = 0.0f;
-float slider2_value = 0.0f;
-float slider3_value = 0.0f;
-float slider4_value = 0.0f;
-float slider5_value = 0.0f;
+float slider1_value = alpha;
+float slider2_value = pKp;
+float slider3_value = pKi;
+float slider4_value = pKd;
+float slider5_value = throt;
 
-// HTML content for the webpage with input fields and buttons
+bool extern motrState ;  // Boolean flag for start/stop
+
+// HTML content for the webpage with input fields, buttons, and start/stop control
 const char* html_content = "<!DOCTYPE html>\
 <html>\
 <head>\
-<title>ESP32 Float Input</title>\
+<title>ESP32 Float Input with Start/Stop</title>\
 </head>\
 <body>\
 <h2>Set Float Values</h2>\
 <div>\
-  <label for='input1'>Value 1:</label>\
-  <input type='number' id='input1' value='0.0' step='0.001' placeholder='Enter value' />\
+  <label for='input1'>Throtle:</label>\
+  <input type='number' id='input1' value='0.0' step='1.0' />\
   <button onclick='sendValue(1)'>Send</button><br><br>\
 </div>\
 <div>\
-  <label for='input2'>Value 2:</label>\
-  <input type='number' id='input2' value='0.0' step='0.001' placeholder='Enter value' />\
+  <label for='input2'>Alpha:</label>\
+  <input type='number' id='input2' value='0.015' step='0.001' />\
   <button onclick='sendValue(2)'>Send</button><br><br>\
 </div>\
 <div>\
-  <label for='input3'>Value 3:</label>\
-  <input type='number' id='input3' value='0.0' step='0.001' placeholder='Enter value' />\
+  <label for='input3'>Value P:</label>\
+  <input type='number' id='input3' value='0.001' step='0.001' />\
   <button onclick='sendValue(3)'>Send</button><br><br>\
 </div>\
 <div>\
-  <label for='input4'>Value 4:</label>\
-  <input type='number' id='input4' value='0.0' step='0.001' placeholder='Enter value' />\
+  <label for='input4'>Value I:</label>\
+  <input type='number' id='input4' value='0.001' step='0.001' />\
   <button onclick='sendValue(4)'>Send</button><br><br>\
 </div>\
 <div>\
-  <label for='input5'>Value 5:</label>\
-  <input type='number' id='input5' value='0.0' step='0.001' placeholder='Enter value' />\
+  <label for='input5'>Value D:</label>\
+  <input type='number' id='input5' value='0.001' step='0.001' />\
   <button onclick='sendValue(5)'>Send</button><br><br>\
+</div>\
+<div>\
+  <button onclick='toggleStartStop()' id='startStopBtn'>Start</button><br><br>\
 </div>\
 <script>\
 function sendValue(slider) {\
@@ -63,6 +71,17 @@ function sendValue(slider) {\
     var xhr = new XMLHttpRequest();\
     xhr.open('GET', '/slider?slider=' + slider + '&value=' + parseFloat(value).toFixed(3), true);\
     xhr.send();\
+}\
+function toggleStartStop() {\
+    var xhr = new XMLHttpRequest();\
+    xhr.open('GET', '/toggleStartStop', true);\
+    xhr.send();\
+    var btn = document.getElementById('startStopBtn');\
+    if (btn.innerHTML === 'Start') {\
+        btn.innerHTML = 'Stop';\
+    } else {\
+        btn.innerHTML = 'Start';\
+    }\
 }\
 </script>\
 </body>\
@@ -83,28 +102,33 @@ esp_err_t slider_handler(httpd_req_t *req) {
 
     buf_len = httpd_req_get_url_query_len(req) + 1;
     if (buf_len > 1) {
-        buf = (char*) malloc(buf_len);  
+        buf = (char*) malloc(buf_len);
         if (httpd_req_get_url_query_str(req, buf, buf_len) == ESP_OK) {
             sscanf(buf, "slider=%d&value=%f", &slider, &value);
             ESP_LOGI(TAG, "Slider %d set to %.3f", slider, value);
 
             // Update slider values based on the slider number
             switch (slider) {
-                case 1:
-                slider1_value = value;
-                madgwick.setBeta(value); 
-                break;
-                case 2: slider2_value = value;
-                alpha=value;
-                break;
-                case 3: slider3_value = value; break;
-                case 4: slider4_value = value; break;
-                case 5: slider5_value = value; break;
+                // case 1: slider1_value = value; throt=value; break;
+                case 1: slider1_value = value; throt=value; break;
+                case 2: slider2_value = value; alpha=value; break;
+                // case 2: slider2_value = value; madgwick.setBeta(value); break;
+                case 3: slider3_value = value; pKp=value; break;
+                case 4: slider4_value = value; pKi=value; break;
+                case 5: slider5_value = value; pKd=value; break;
                 default: break;
             }
         }
         free(buf);
     }
+    httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+}
+
+// HTTP GET handler for toggling start/stop
+esp_err_t toggle_start_stop_handler(httpd_req_t *req) {
+    motrState = !motrState;  // Toggle the boolean value
+    ESP_LOGI(TAG, "System %s", motrState ? "Started" : "Stopped");
     httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
 }
@@ -124,6 +148,13 @@ httpd_uri_t uri_slider = {
     .user_ctx = NULL
 };
 
+httpd_uri_t uri_toggle_start_stop = {
+    .uri      = "/toggleStartStop",
+    .method   = HTTP_GET,
+    .handler  = toggle_start_stop_handler,
+    .user_ctx = NULL
+};
+
 // Start the web server
 static httpd_handle_t start_webserver(void) {
     httpd_handle_t server = NULL;
@@ -132,6 +163,7 @@ static httpd_handle_t start_webserver(void) {
     if (httpd_start(&server, &config) == ESP_OK) {
         httpd_register_uri_handler(server, &uri_root);
         httpd_register_uri_handler(server, &uri_slider);
+        httpd_register_uri_handler(server, &uri_toggle_start_stop);
     }
     return server;
 }
