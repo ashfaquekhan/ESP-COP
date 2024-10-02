@@ -62,12 +62,13 @@ float fdRprv,fdPprv,fdYprv;
 float rPID,pPID,yPID;
 float rSet,pSet,ySet;
 float iLimit;
-int throt = 50; 
+int throt = 60; 
 float alpha(0.015); //0.015~0.03
 float period(0.001);
 float tKf(0.003);
 bool motrState=false;
-
+int m1,m2,m3,m4;
+int m1s,m2s,m3s,m4s;
 double current_time, last_time;
 #define LOOP_RATE_MS 1  // Desired loop rate in MS(e.g., 100 ms)
 static esp_timer_handle_t timer; // Timer handle
@@ -78,7 +79,7 @@ void init_ledc_timer() {
         .speed_mode = LEDC_LOW_SPEED_MODE,     // High-speed mode
         .duty_resolution = LEDC_TIMER_8_BIT,    // 8-bit resolution
         .timer_num = LEDC_TIMER_2,              // Timer 2
-        .freq_hz = 10000,                       // 10 kHz PWM frequency
+        .freq_hz = 5000,                       // 10 kHz PWM frequency
         .clk_cfg = LEDC_AUTO_CLK                // Auto-select clock
     };
     ledc_timer_config(&ledc_timer);
@@ -126,83 +127,15 @@ double TimeToSec() {
     return (double)time_us / 1000000.0;
 }
 
-void IRAM_ATTR timer_callback(void* arg) {
-    // Get scaled accelerometer and gyroscope values
-    _getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-    
-    // Calculate delta time since last update
-    current_time = TimeToSec(); // Ensure this returns time in seconds
-    dt = current_time - last_time;
-    last_time = current_time;
-
-    // Update Madgwick filter with new data
-    madgwick.updateIMU(gx, gy, gz, ax, ay, az, dt);
-    roll = madgwick.getRoll();
-    pitch = madgwick.getPitch();
-    yaw = gz;
-    // yaw   = madgwick.getYaw();
-
-    errP = pSet - pitch;
-    iP = iPprv + errP*dt;
-    if(throt < 50){iP=0;} //clamp
-    iP = CONSTRAIN(iP,-iLimit,iLimit);//windup 
-    dP = gy;
-    // LOW_PASS_FILTER(dP,fdP,fdPprv,alpha);
-    TIME_BASED_LOW_PASS_FILTER(dP,fdP,fdPprv,tKf,period);
-    // fdPprv=fdP;
-    pPID = 0.01 * (pKp*errP + pKi*iP - pKd*dP);//scale
-    iPprv =iP;
-
-}
-
-void mpu6050_task(void *pvParameters) {
-    // Initialize the MPU6050
-    mpu.initialize();
-    ESP_LOGI(TAG, "MPU6050 initialized, DeviceID=0x%x", mpu.getDeviceID());
-
-    const esp_timer_create_args_t timer_args = {
-        .callback = &timer_callback,          // Callback function
-        .arg = NULL,                          // Argument passed to the callback (can be NULL if not needed)
-        .dispatch_method = ESP_TIMER_TASK,    // Dispatch method
-        .name = "IMU Timer",                  // Name of the timer
-        .skip_unhandled_events = false         // Skip unhandled events (set to true if needed)
-    };
-
-    esp_err_t err = esp_timer_create(&timer_args, &timer);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to create timer: %s", esp_err_to_name(err));
-        return; // Handle error appropriately
-    }
-
-    uint64_t timer_interval = LOOP_RATE_MS * 1000; 
-    esp_timer_start_periodic(timer, timer_interval);
-
-    while (1) 
-    {
-         vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
-    // Cleanup 
-    esp_timer_stop(timer);
-    esp_timer_delete(timer);
-}
-
-// IMU task
-void mpu6050_task_direct(void *pvParameters) {
-    // Initialize the MPU6050
-    mpu.initialize();
-    ESP_LOGI(TAG, "MPU6050 initialized, DeviceID=0x%x", mpu.getDeviceID());
-
-    // Variables for timing and initialization
-    double last_time = TimeToSec();
-    esp_rom_gpio_pad_select_gpio(GPIO_NUM_11);
-    gpio_set_direction(GPIO_NUM_11, GPIO_MODE_OUTPUT);
-    
+void initfunc()
+{
     pSet=0;
     rSet=0;
     ySet=0;
-    iLimit=100;
-    while (1) {
-        
+    iLimit=10000;
+}
+void taskfunc()
+{
         // gpio_set_level(GPIO_NUM_11, 1); // Turn on the LED
         // Get scaled accelerometer and gyroscope values
         _getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
@@ -226,8 +159,89 @@ void mpu6050_task_direct(void *pvParameters) {
         // TIME_BASED_LOW_PASS_FILTER(dP,fdP,fdPprv,tKf,period);
         pPID = 0.01 * (pKp*errP + pKi*iP - pKd*dP);//scale
         iPprv =iP;
-        
 
+        pPID= pPID*250;
+        m1 = CONSTRAIN( throt + pPID  ,0,255);
+        m2 = CONSTRAIN( throt - pPID  ,0,255);
+        m3 = CONSTRAIN( throt - pPID  ,0,255);
+        m4 = CONSTRAIN( throt + pPID  ,0,255);
+
+        if(motrState)
+        {
+            ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, m1);
+            ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, m2);
+            ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2, m3);
+            ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3, m4);
+
+            ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
+            ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1);
+            ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2);
+            ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3);
+        }
+        else
+        {
+            ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0);
+            ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, 0);
+            ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2, 0);
+            ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3, 0);
+
+            ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
+            ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1);
+            ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2);
+            ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3);
+        }
+
+}
+
+void IRAM_ATTR timer_callback(void* arg) 
+{
+    taskfunc();
+}
+
+void mpu6050_task(void *pvParameters) {
+    // Initialize the MPU6050
+    mpu.initialize();
+    ESP_LOGI(TAG, "MPU6050 initialized, DeviceID=0x%x", mpu.getDeviceID());
+
+    const esp_timer_create_args_t timer_args = {
+        .callback = &timer_callback,          // Callback function
+        .arg = NULL,                          // Argument passed to the callback (can be NULL if not needed)
+        .dispatch_method = ESP_TIMER_TASK,    // Dispatch method
+        .name = "IMU Timer",                  // Name of the timer
+        .skip_unhandled_events = false         // Skip unhandled events (set to true if needed)
+    };
+
+    esp_err_t err = esp_timer_create(&timer_args, &timer);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to create timer: %s", esp_err_to_name(err));
+        return; // Handle error appropriately
+    }
+
+    uint64_t timer_interval = LOOP_RATE_MS * 1000; 
+    esp_timer_start_periodic(timer, timer_interval);
+    
+    initfunc();
+    while (1) 
+    {
+         vTaskDelay(10 / portTICK_PERIOD_MS);
+    }
+    // Cleanup 
+    esp_timer_stop(timer);
+    esp_timer_delete(timer);
+}
+
+// IMU task
+void mpu6050_task_direct(void *pvParameters) {
+    // Initialize the MPU6050
+    mpu.initialize();
+    ESP_LOGI(TAG, "MPU6050 initialized, DeviceID=0x%x", mpu.getDeviceID());
+
+    // esp_rom_gpio_pad_select_gpio(GPIO_NUM_11);
+    // gpio_set_direction(GPIO_NUM_11, GPIO_MODE_OUTPUT);
+    initfunc();
+    while (1) 
+    {
+        taskfunc();
     }
 }
 
@@ -251,8 +265,8 @@ void print_task(void *pvParameters)
     while (1)
     {
         // printf("Yaw: %f, Pitch: %f, Roll: %f, dt: %f\n", yaw, pitch, roll, dt);
-        printf("%.2f,%.2f,%.2f,%.2f\n", roll, pitch, yaw,fdP);
-        // printf("%.2f,%.2f,%.2f\n",pitch, pPID,gy);
+        // printf("%.2f,%.2f,%.2f,%.2f\n", roll, pitch, yaw,fdP);
+        // printf("%.2f,%.2f,%.2f,%.2f\n",pitch, pPID,gy,iP);
         // printf("%.2f,%.2f\n",fdP,gy);
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
@@ -280,10 +294,10 @@ extern "C" void app_main(void)
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
-    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 10);
-    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, 10);
-    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2, 10);
-    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3, 10);
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0);
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, 0);
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2, 0);
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3, 0);
 
     ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
     ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1);
