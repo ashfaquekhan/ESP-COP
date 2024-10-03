@@ -131,7 +131,7 @@ double TimeToSec() {
 void initfunc()
 {
     pSet=-3;
-    rSet=0;
+    rSet=-2;
     ySet=0;
     iLimit=10000;
 }
@@ -159,7 +159,7 @@ void taskfunc()
         iP = CONSTRAIN(iP,-iLimit,iLimit);//windup 
         dP = gy;
         LOW_PASS_FILTER(dP,fdP,fdPprv,alpha);
-        pPID = 0.0002 * (pKp*errP + pKi*iP - pKd*dP);         //scale 0.01(scale for 1)/50(max PWM) = 0.0002
+        pPID = 0.01 * (pKp*errP + pKi*iP - pKd*dP);         //scale 0.01(scale for 1)*50(max PWM) = 0.5
         iPprv =iP;
 
         errR = rSet - roll;
@@ -168,7 +168,7 @@ void taskfunc()
         iR = CONSTRAIN(iR,-iLimit,iLimit);
         dR = gx;
         LOW_PASS_FILTER(dR,fdR,fdRprv,alpha);
-        rPID = 0.0002 * (rKp*errR + rKi*iR - rKd*dR);    //scale 0.01(scale for 1)/50(max PWM) = 0.0002
+        rPID = 0.01 * (rKp*errR + rKi*iR - rKd*dR);    //scale 0.01(scale for 1)*50(max PWM) = 0.5
         iRprv = iR;
 
         errY = ySet - yaw;
@@ -176,14 +176,27 @@ void taskfunc()
         if(clamp){iY=0;}
         iY = CONSTRAIN(iY,-iLimit,iLimit);
         dY = (errY - errYprv)/dt;
-        yPID = 0.0001 * (yKp*errY + yKi*iY - yKd*dY);    //scale 0.01(scale for 1)/100(max PWM) = 0.0001
+        yPID = 0.01*(yKp*errY + yKi*iY - yKd*dY);    //scale 0.01(scale for 1)*50(max PWM) = 0.5
         iYprv = iY;
         errYprv = errY;
 
-        m1 = throt + pPID ;
-        m2 = throt - pPID ;
-        m3 = throt - pPID ;
-        m4 = throt + pPID ;
+        rPID*=50;
+        pPID*=50;
+
+        // m1 = throt + yPID; //+ pPID ;
+        // m2 = throt - yPID; //- pPID ;
+        // m3 = throt + yPID; //- pPID ;
+        // m4 = throt - yPID; //+ pPID ;
+
+        // m1 = throt + pPID + rPID ;
+        // m2 = throt - pPID + rPID ;
+        // m3 = throt - pPID - rPID ;
+        // m4 = throt + pPID - rPID ;
+
+        m1 = throt + rPID ;
+        m2 = throt + rPID ;
+        m3 = throt - rPID ;
+        m4 = throt - rPID ;
 
         m1 = CONSTRAIN(m1,0,255);
         m2 = CONSTRAIN(m2,0,255);
@@ -292,8 +305,8 @@ void print_task(void *pvParameters)
 {
     while (1)
     {
-        // printf("Yaw: %f, Pitch: %f, Roll: %f, dt: %f\n", yaw, pitch, roll, dt);
-        // printf("%.2f,%.2f,%.2f,%.2f\n", roll, pitch, yaw,fdP);
+        printf("Yaw: %f, Pitch: %f, Roll: %f, dt: %f\n", yaw, pitch, roll, dt);
+        // printf("%.2f,%.2f,%.2f\n", roll, pitch, yaw);
         // printf("%.2f,%.2f,%.2f,%.2f\n",pitch, pPID,gy,iP);
         // printf("%.2f,%.2f\n",fdP,gy);
         vTaskDelay(10 / portTICK_PERIOD_MS);

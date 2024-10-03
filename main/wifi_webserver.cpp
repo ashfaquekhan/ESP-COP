@@ -13,6 +13,7 @@
 extern Madgwick madgwick;
 extern float alpha;
 extern float pKp,pKi,pKd;
+extern float rKp,rKi,rKd;
 extern int throt;
 extern float tKf;
 
@@ -111,11 +112,11 @@ esp_err_t slider_handler(httpd_req_t *req) {
             switch (slider) {
                 // case 1: slider1_value = value; throt=value; break;
                 case 1: slider1_value = value; throt=value; break;
-                case 2: slider2_value = value; alpha=value; break;
-                // case 2: slider2_value = value; madgwick.setBeta(value); break;
-                case 3: slider3_value = value; pKp=value; break;
-                case 4: slider4_value = value; pKi=value; break;
-                case 5: slider5_value = value; pKd=value; break;
+                // case 2: slider2_value = value; alpha=value; break;
+                case 2: slider2_value = value; madgwick.setBeta(value); break;
+                case 3: slider3_value = value; rKp=value; break;
+                case 4: slider4_value = value; rKi=value; break;
+                case 5: slider5_value = value; rKd=value; break;
                 default: break;
             }
         }
