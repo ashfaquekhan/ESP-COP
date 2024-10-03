@@ -157,10 +157,11 @@ void taskfunc()
         dP = gy;
         LOW_PASS_FILTER(dP,fdP,fdPprv,alpha);
         // TIME_BASED_LOW_PASS_FILTER(dP,fdP,fdPprv,tKf,period);
-        pPID = 0.01 * (pKp*errP + pKi*iP - pKd*dP);//scale
+        pPID = 0.0002 * (pKp*errP + pKi*iP - pKd*dP);         //scale 0.01(scale for 1)/50(max PWM) = 0.0002
+        
         iPprv =iP;
 
-        pPID= pPID*250;
+
         m1 = CONSTRAIN( throt + pPID  ,0,255);
         m2 = CONSTRAIN( throt - pPID  ,0,255);
         m3 = CONSTRAIN( throt - pPID  ,0,255);
