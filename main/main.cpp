@@ -49,7 +49,7 @@ float dt;
 float ax, ay, az, gx, gy, gz;
 bool clamp = true;
 
-float rKp=6.0,rKi=0.006,rKd=0.69;
+float rKp=6.0,rKi=0.01,rKd=0.69;
 float pKp=6.0,pKi=0.01,pKd=0.69;
 float yKp=0.0,yKi=0.0,yKd=0.0;
 
@@ -62,7 +62,7 @@ float fdRprv,fdPprv,fdYprv;
 
 float rPID,pPID,yPID;
 float rSet,pSet,ySet;
-float rOff(0.0),pOff(3.0),yOff;
+float rOff(3.0),pOff(3.0),yOff;
 float iLimit;
 int throt = 10; 
 float alpha(0.015); //0.015~0.03
@@ -163,7 +163,7 @@ void taskfunc()
         pPID = 0.01 * (pKp*errP + pKi*iP - pKd*dP);         //scale 0.01(scale for 1)*50(max PWM) = 0.5
         iPprv =iP;
 
-        errR = rSet - roll;
+        errR = rSet + roll;
         iR = iRprv + errR;// *dt;
         if(clamp){iR=0;}
         iR = CONSTRAIN(iR,-iLimit,iLimit);
@@ -181,18 +181,23 @@ void taskfunc()
         iYprv = iY;
         errYprv = errY;
 
-        rPID*=50;
-        pPID*=50;
+        rPID*=20;
+        pPID*=20;
+        yPID*=20;
+        
+        rPID=CONSTRAIN(rPID,-20,20);
+        pPID=CONSTRAIN(pPID,-20,20);
+        yPID=CONSTRAIN(yPID,-20,20);
 
-        // m1 = throt + yPID; //+ pPID ;
-        // m2 = throt - yPID; //- pPID ;
-        // m3 = throt + yPID; //- pPID ;
-        // m4 = throt - yPID; //+ pPID ;
+        m1 = throt + yPID + rPID + pPID ;
+        m2 = throt - yPID - rPID + pPID ;
+        m3 = throt + yPID - rPID - pPID ;
+        m4 = throt - yPID + rPID - pPID ;
 
-        m1 = throt + yPID ;
-        m2 = throt - yPID ;
-        m3 = throt + yPID ;
-        m4 = throt - yPID ;
+        // m1 = throt + yPID ;
+        // m2 = throt - yPID ;
+        // m3 = throt + yPID ;
+        // m4 = throt - yPID ;
 
         // m1 = throt + pPID ;
         // m2 = throt + pPID ;
