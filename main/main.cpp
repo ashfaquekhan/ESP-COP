@@ -180,7 +180,6 @@ void taskfunc()
         iYprv = iY;
         errYprv = errY;
 
-
         m1 = throt + pPID ;
         m2 = throt - pPID ;
         m3 = throt - pPID ;
