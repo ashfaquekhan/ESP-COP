@@ -47,12 +47,13 @@ float pitch;
 float yaw;  
 float dt;
 float ax, ay, az, gx, gy, gz;
+bool clamp = true;
 
 float rKp=6.0,rKi=0.006,rKd=0.69;
 float pKp=6.0,pKi=0.006,pKd=0.69;
 float yKp=0.0,yKi=0.0,yKd=0.0;
 
-float errR,errP,errY;
+float errR,errP,errY,errYprv(0.0);
 float iR,iP,iY;
 float iRprv(0.0),iPprv(0.0),iYprv(0.0);
 float dR,dP,dY;
@@ -62,7 +63,7 @@ float fdRprv,fdPprv,fdYprv;
 float rPID,pPID,yPID;
 float rSet,pSet,ySet;
 float iLimit;
-int throt = 60; 
+int throt = 10; 
 float alpha(0.015); //0.015~0.03
 float period(0.001);
 float tKf(0.003);
@@ -149,23 +150,46 @@ void taskfunc()
         pitch = madgwick.getPitch();
         yaw   = gz;
         // yaw   = madgwick.getYaw();
+
+        clamp = throt < 20;
         
         errP = pSet - pitch;
         iP = iPprv + errP*dt;
-        if(throt < 50){iP=0;} //clamp
+        if(clamp){iP=0;} //clamp
         iP = CONSTRAIN(iP,-iLimit,iLimit);//windup 
         dP = gy;
         LOW_PASS_FILTER(dP,fdP,fdPprv,alpha);
-        // TIME_BASED_LOW_PASS_FILTER(dP,fdP,fdPprv,tKf,period);
         pPID = 0.0002 * (pKp*errP + pKi*iP - pKd*dP);         //scale 0.01(scale for 1)/50(max PWM) = 0.0002
-        
         iPprv =iP;
 
+        errR = rSet - roll;
+        iR = iRprv + errR*dt;
+        if(clamp){iR=0;}
+        iR = CONSTRAIN(iR,-iLimit,iLimit);
+        dR = gx;
+        LOW_PASS_FILTER(dR,fdR,fdRprv,alpha);
+        rPID = 0.0002 * (rKp*errR + rKi*iR - rKd*dR);    //scale 0.01(scale for 1)/50(max PWM) = 0.0002
+        iRprv = iR;
 
-        m1 = CONSTRAIN( throt + pPID  ,0,255);
-        m2 = CONSTRAIN( throt - pPID  ,0,255);
-        m3 = CONSTRAIN( throt - pPID  ,0,255);
-        m4 = CONSTRAIN( throt + pPID  ,0,255);
+        errY = ySet - yaw;
+        iY = iYprv + errY*dt;
+        if(clamp){iY=0;}
+        iY = CONSTRAIN(iY,-iLimit,iLimit);
+        dY = (errY - errYprv)/dt;
+        yPID = 0.0001 * (yKp*errY + yKi*iY - yKd*dY);    //scale 0.01(scale for 1)/100(max PWM) = 0.0001
+        iYprv = iY;
+        errYprv = errY;
+
+
+        m1 = throt + pPID ;
+        m2 = throt - pPID ;
+        m3 = throt - pPID ;
+        m4 = throt + pPID ;
+
+        m1 = CONSTRAIN(m1,0,255);
+        m2 = CONSTRAIN(m2,0,255);
+        m3 = CONSTRAIN(m3,0,255);
+        m4 = CONSTRAIN(m4,0,255);
 
         if(motrState)
         {
