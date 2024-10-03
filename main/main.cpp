@@ -189,15 +189,15 @@ void taskfunc()
         // m3 = throt + yPID; //- pPID ;
         // m4 = throt - yPID; //+ pPID ;
 
-        // m1 = throt + pPID + rPID ;
-        // m2 = throt - pPID + rPID ;
-        // m3 = throt - pPID - rPID ;
-        // m4 = throt + pPID - rPID ;
+        m1 = throt + yPID ;
+        m2 = throt - yPID ;
+        m3 = throt + yPID ;
+        m4 = throt - yPID ;
 
-        m1 = throt + pPID ;
-        m2 = throt + pPID ;
-        m3 = throt - pPID ;
-        m4 = throt - pPID ;
+        // m1 = throt + pPID ;
+        // m2 = throt + pPID ;
+        // m3 = throt - pPID ;
+        // m4 = throt - pPID ;
 
         m1 = CONSTRAIN(m1,0,255);
         m2 = CONSTRAIN(m2,0,255);

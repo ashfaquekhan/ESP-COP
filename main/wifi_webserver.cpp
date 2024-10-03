@@ -14,6 +14,8 @@ extern Madgwick madgwick;
 extern float alpha;
 extern float pKp,pKi,pKd;
 extern float rKp,rKi,rKd;
+extern float yKp,yKi,yKd;
+
 extern int throt;
 extern float tKf;
 
@@ -40,7 +42,7 @@ const char* html_content = "<!DOCTYPE html>\
 <h2>Set Float Values</h2>\
 <div>\
   <label for='input1'>Throtle:</label>\
-  <input type='number' id='input1' value='0.0' step='1.0' />\
+  <input type='number' id='input1' value='10.0' step='1.0' />\
   <button onclick='sendValue(1)'>Send</button><br><br>\
 </div>\
 <div>\
@@ -112,11 +114,11 @@ esp_err_t slider_handler(httpd_req_t *req) {
             switch (slider) {
                 // case 1: slider1_value = value; throt=value; break;
                 case 1: slider1_value = value; throt=value; break;
-                // case 2: slider2_value = value; alpha=value; break;
-                case 2: slider2_value = value; madgwick.setBeta(value); break;
-                case 3: slider3_value = value; rKp=value; break;
-                case 4: slider4_value = value; rKi=value; break;
-                case 5: slider5_value = value; rKd=value; break;
+                case 2: slider2_value = value; alpha=value; break;
+                // case 2: slider2_value = value; madgwick.setBeta(value); break;
+                case 3: slider3_value = value; yKp=value; break;
+                case 4: slider4_value = value; yKi=value; break;
+                case 5: slider5_value = value; yKd=value; break;
                 default: break;
             }
         }
