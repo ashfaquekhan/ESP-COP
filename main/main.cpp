@@ -49,7 +49,7 @@ float dt;
 float ax, ay, az, gx, gy, gz;
 bool clamp = true;
 
-float rKp=6.0,rKi=0.006,rKd=0.69;
+float rKp=6.0,rKi=0.01,rKd=0.69;
 float pKp=6.0,pKi=0.006,pKd=0.69;
 float yKp=0.0,yKi=0.0,yKd=0.0;
 
@@ -131,7 +131,7 @@ double TimeToSec() {
 void initfunc()
 {
     pSet=-3;
-    rSet=-2;
+    rSet=-5;
     ySet=0;
     iLimit=10000;
 }
@@ -154,7 +154,7 @@ void taskfunc()
         clamp = throt < 20;
         
         errP = pSet - pitch;
-        iP = iPprv + errP*dt;
+        iP = iPprv + errP;//*dt;
         if(clamp){iP=0;} //clamp
         iP = CONSTRAIN(iP,-iLimit,iLimit);//windup 
         dP = gy;
@@ -163,7 +163,7 @@ void taskfunc()
         iPprv =iP;
 
         errR = rSet - roll;
-        iR = iRprv + errR*dt;
+        iR = iRprv + errR;// *dt;
         if(clamp){iR=0;}
         iR = CONSTRAIN(iR,-iLimit,iLimit);
         dR = gx;
@@ -172,7 +172,7 @@ void taskfunc()
         iRprv = iR;
 
         errY = ySet - yaw;
-        iY = iYprv + errY*dt;
+        iY = iYprv + errY;//*dt;
         if(clamp){iY=0;}
         iY = CONSTRAIN(iY,-iLimit,iLimit);
         dY = (errY - errYprv)/dt;
