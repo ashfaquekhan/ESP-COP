@@ -49,8 +49,8 @@ float dt;
 float ax, ay, az, gx, gy, gz;
 bool clamp = true;
 
-float rKp=6.0,rKi=0.01,rKd=0.69;
-float pKp=6.0,pKi=0.006,pKd=0.69;
+float rKp=6.0,rKi=0.006,rKd=0.69;
+float pKp=6.0,pKi=0.01,pKd=0.69;
 float yKp=0.0,yKi=0.0,yKd=0.0;
 
 float errR,errP,errY,errYprv(0.0);
@@ -62,6 +62,7 @@ float fdRprv,fdPprv,fdYprv;
 
 float rPID,pPID,yPID;
 float rSet,pSet,ySet;
+float rOff(0.0),pOff(3.0),yOff;
 float iLimit;
 int throt = 10; 
 float alpha(0.015); //0.015~0.03
@@ -80,7 +81,7 @@ void init_ledc_timer() {
         .speed_mode = LEDC_LOW_SPEED_MODE,     // High-speed mode
         .duty_resolution = LEDC_TIMER_8_BIT,    // 8-bit resolution
         .timer_num = LEDC_TIMER_2,              // Timer 2
-        .freq_hz = 5000,                       // 10 kHz PWM frequency
+        .freq_hz = 7000,                       // 10 kHz PWM frequency
         .clk_cfg = LEDC_AUTO_CLK                // Auto-select clock
     };
     ledc_timer_config(&ledc_timer);
@@ -130,8 +131,8 @@ double TimeToSec() {
 
 void initfunc()
 {
-    pSet=-3;
-    rSet=-5;
+    pSet=0;
+    rSet=0;
     ySet=0;
     iLimit=10000;
 }
@@ -146,8 +147,8 @@ void taskfunc()
 
         // Update Madgwick filter with new data
         madgwick.updateIMU(gx, gy, gz, ax, ay, az, dt);
-        roll  = madgwick.getRoll();
-        pitch = madgwick.getPitch();
+        roll  = madgwick.getRoll() + rOff;
+        pitch = madgwick.getPitch() + pOff;
         yaw   = gz;
         // yaw   = madgwick.getYaw();
 
@@ -193,10 +194,10 @@ void taskfunc()
         // m3 = throt - pPID - rPID ;
         // m4 = throt + pPID - rPID ;
 
-        m1 = throt + rPID ;
-        m2 = throt + rPID ;
-        m3 = throt - rPID ;
-        m4 = throt - rPID ;
+        m1 = throt + pPID ;
+        m2 = throt + pPID ;
+        m3 = throt - pPID ;
+        m4 = throt - pPID ;
 
         m1 = CONSTRAIN(m1,0,255);
         m2 = CONSTRAIN(m2,0,255);
