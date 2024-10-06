@@ -15,6 +15,7 @@ extern float alpha;
 extern float pKp,pKi,pKd;
 extern float rKp,rKi,rKd;
 extern float yKp,yKi,yKd;
+extern float iP,iR,iY;
 
 extern int throt;
 extern float tKf;
@@ -109,7 +110,9 @@ esp_err_t slider_handler(httpd_req_t *req) {
         if (httpd_req_get_url_query_str(req, buf, buf_len) == ESP_OK) {
             sscanf(buf, "slider=%d&value=%f", &slider, &value);
             ESP_LOGI(TAG, "Slider %d set to %.3f", slider, value);
-
+            iP=0;
+            iR=0;
+            iY=0;
             // Update slider values based on the slider number
             switch (slider) {
                 // case 1: slider1_value = value; throt=value; break;

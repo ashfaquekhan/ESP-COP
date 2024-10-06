@@ -49,8 +49,8 @@ float dt;
 float ax, ay, az, gx, gy, gz;
 bool clamp = true;
 
-float rKp=6.0,rKi=0.01,rKd=0.69;
-float pKp=6.0,pKi=0.01,pKd=0.69;
+float rKp=0.15,rKi=0.0005,rKd=0.009;
+float pKp=0.15,pKi=0.0005,pKd=0.009;
 float yKp=0.0,yKi=0.0,yKd=0.0;
 
 float errR,errP,errY,errYprv(0.0);
@@ -65,7 +65,7 @@ float rSet,pSet,ySet;
 float rOff(3.0),pOff(3.0),yOff;
 float iLimit;
 int throt = 10; 
-float alpha(0.015); //0.015~0.03
+float alpha(0.035); //0.015~0.035
 float period(0.001);
 float tKf(0.003);
 bool motrState=false;
@@ -131,7 +131,7 @@ double TimeToSec() {
 
 void initfunc()
 {
-    pSet=0;
+    pSet=-3;
     rSet=0;
     ySet=0;
     iLimit=10000;
@@ -147,12 +147,12 @@ void taskfunc()
 
         // Update Madgwick filter with new data
         madgwick.updateIMU(gx, gy, gz, ax, ay, az, dt);
-        roll  = madgwick.getRoll() + rOff;
-        pitch = madgwick.getPitch() + pOff;
+        roll  = madgwick.getRoll();
+        pitch = madgwick.getPitch();
         yaw   = gz;
         // yaw   = madgwick.getYaw();
 
-        clamp = throt < 20;
+        clamp = throt < 10;
         
         errP = pSet - pitch;
         iP = iPprv + errP;//*dt;
@@ -185,14 +185,17 @@ void taskfunc()
         pPID*=20;
         yPID*=20;
         
-        rPID=CONSTRAIN(rPID,-20,20);
-        pPID=CONSTRAIN(pPID,-20,20);
-        yPID=CONSTRAIN(yPID,-20,20);
-
-        m1 = throt + yPID + rPID + pPID ;
-        m2 = throt - yPID - rPID + pPID ;
-        m3 = throt + yPID - rPID - pPID ;
-        m4 = throt - yPID + rPID - pPID ;
+        rPID=CONSTRAIN(rPID,-50,50);
+        pPID=CONSTRAIN(pPID,-50,50);
+        yPID=CONSTRAIN(yPID,-50,50);
+        // m1 = throt + yPID + rPID + pPID ;
+        // m2 = throt - yPID - rPID + pPID ;
+        // m3 = throt + yPID - rPID - pPID ;
+        // m4 = throt - yPID + rPID - pPID ;
+        m1 = throt + rPID;
+        m2 = throt - rPID;
+        m3 = throt - rPID;
+        m4 = throt + rPID;
 
         // m1 = throt + yPID ;
         // m2 = throt - yPID ;
@@ -311,10 +314,10 @@ void print_task(void *pvParameters)
 {
     while (1)
     {
-        printf("Yaw: %f, Pitch: %f, Roll: %f, dt: %f\n", yaw, pitch, roll, dt);
+        // printf("Yaw: %f, Pitch: %f, Roll: %f, dt: %f\n", yaw, pitch, roll, dt);
         // printf("%.2f,%.2f,%.2f\n", roll, pitch, yaw);
         // printf("%.2f,%.2f,%.2f,%.2f\n",pitch, pPID,gy,iP);
-        // printf("%.2f,%.2f\n",fdP,gy);
+        printf("%.2f,%.2f\n",fdP,gy);
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 }
