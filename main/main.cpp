@@ -48,8 +48,8 @@ float yaw;
 float dt;
 float ax, ay, az, gx, gy, gz;
 bool clamp = true;
-
-float rKp=0.09,rKi=0.0001,rKd=0.07;
+        //P: 0.1 | I:0.0003 | D:0.08 
+float rKp=0.09,rKi=0.0001,rKd=0.07; 
 float pKp=0.09,pKi=0.0001,pKd=0.07;
 float yKp=0.1,yKi=0.0009,yKd=0.0;
 
