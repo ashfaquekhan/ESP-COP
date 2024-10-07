@@ -49,11 +49,12 @@ float dt;
 float ax, ay, az, gx, gy, gz;
 bool clamp = true;
 
-float rKp=0.15,rKi=0.0005,rKd=0.009;
-float pKp=0.15,pKi=0.0005,pKd=0.009;
+float rKp=0.09,rKi=0.0002,rKd=0.07;
+float pKp=0.09,pKi=0.0002,pKd=0.07;
 float yKp=0.0,yKi=0.0,yKd=0.0;
 
-float errR,errP,errY,errYprv(0.0);
+float errR,errP,errY;
+float errRprv(0.0),errPprv(0.0),errYprv(0.0);
 float iR,iP,iY;
 float iRprv(0.0),iPprv(0.0),iYprv(0.0);
 float dR,dP,dY;
@@ -65,7 +66,7 @@ float rSet,pSet,ySet;
 float rOff(3.0),pOff(3.0),yOff;
 float iLimit;
 int throt = 5; 
-float alpha(0.035); //0.015~0.035
+float alpha(0.09); //0.015~0.035
 float period(0.001);
 float tKf(0.003);
 bool motrState=false;
@@ -159,25 +160,29 @@ void taskfunc()
         iP = iPprv + errP;//*dt;
         if(clamp){iP=0;} //clamp
         iP = CONSTRAIN(iP,-iLimit,iLimit);//windup 
-        dP = gy;
+        dP= gy;
+        // dP = (errP-errPprv)/dt;
         LOW_PASS_FILTER(dP,fdP,fdPprv,alpha);
         pPID = 0.01 * (pKp*errP + pKi*iP - pKd*fdP);         //scale 0.01(scale for 1)*50(max PWM) = 0.5
         iPprv =iP;
+        errPprv=errP; 
 
         errR = rSet + roll;
         iR = iRprv + errR;// *dt;
         if(clamp){iR=0;}
         iR = CONSTRAIN(iR,-iLimit,iLimit);
-        dR = gx;
+        dR = -gx;
+        // dR = (errR - errRprv)/0.0001;
         LOW_PASS_FILTER(dR,fdR,fdRprv,alpha);
         rPID = 0.01 * (rKp*errR + rKi*iR - rKd*fdR);    //scale 0.01(scale for 1)*50(max PWM) = 0.5
         iRprv = iR;
+        errRprv=errR;
 
         errY = ySet - yaw;
         iY = iYprv + errY;//*dt;
         if(clamp){iY=0;}
         iY = CONSTRAIN(iY,-iLimit,iLimit);
-        dY = (errY - errYprv)/dt;
+        dY = (errY - errYprv)/0.0001;
         yPID = 0.01*(yKp*errY + yKi*iY - yKd*fdY);    //scale 0.01(scale for 1)*50(max PWM) = 0.5
         iYprv = iY;
         errYprv = errY;
@@ -189,24 +194,21 @@ void taskfunc()
         rPID=CONSTRAIN(rPID,-pwmxPID,pwmxPID);
         pPID=CONSTRAIN(pPID,-pwmxPID,pwmxPID);
         yPID=CONSTRAIN(yPID,-pwmxPID,pwmxPID);
+
         // m1 = throt + yPID + rPID + pPID ;
         // m2 = throt - yPID - rPID + pPID ;
         // m3 = throt + yPID - rPID - pPID ;
         // m4 = throt - yPID + rPID - pPID ;
-        m1 = throt + rPID;
-        m2 = throt - rPID;
-        m3 = throt - rPID;
-        m4 = throt + rPID;
 
-        // m1 = throt + yPID ;
-        // m2 = throt - yPID ;
-        // m3 = throt + yPID ;
-        // m4 = throt - yPID ;
+        m1 = throt + rPID + pPID ;
+        m2 = throt - rPID + pPID ;
+        m3 = throt - rPID - pPID ;
+        m4 = throt + rPID - pPID ;
 
-        // m1 = throt + pPID ;
-        // m2 = throt + pPID ;
-        // m3 = throt - pPID ;
-        // m4 = throt - pPID ;
+        // m1 = throt + rPID;
+        // m2 = throt - rPID;
+        // m3 = throt - rPID;
+        // m4 = throt + rPID;
 
         m1 = CONSTRAIN(m1,0,255);
         m2 = CONSTRAIN(m2,0,255);
@@ -237,9 +239,9 @@ void taskfunc()
             ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2);
             ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3);
 
-            // iP=0;
-            // iR=0;
-            // iY=0;
+            iP=0;
+            iR=0;
+            iY=0;
         }
 
 }
@@ -316,9 +318,11 @@ void print_task(void *pvParameters)
     while (1)
     {
         // printf("Yaw: %f, Pitch: %f, Roll: %f, dt: %f\n", yaw, pitch, roll, dt);
-        // printf("%.2f,%.2f,%.2f\n", roll, pitch, yaw);
+        printf("%.2f,%.2f,%.2f\n", roll, pitch, yaw);
         // printf("%.2f,%.2f,%.2f,%.2f\n",pitch, pPID,gy,iP);
-        printf("%.2f,%.2f,%.2f,%.2f,%.2f\n",roll,rPID,gx,fdR,iR);
+        // printf("%.2f,%.2f,%.2f,%.2f,%.2f\n",roll,rPID,gx,fdR,iR);
+        //  printf("%.2f,%.2f\n",dP,fdP);
+        //  printf("%.2f,%.2f\n",dR,fdR);a
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 }
