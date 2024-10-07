@@ -51,7 +51,7 @@ bool clamp = true;
 
 float rKp=0.09,rKi=0.0001,rKd=0.07;
 float pKp=0.09,pKi=0.0001,pKd=0.07;
-float yKp=0.0,yKi=0.0,yKd=0.0;
+float yKp=0.1,yKi=0.0009,yKd=0.0;
 
 float errR,errP,errY;
 float errRprv(0.0),errPprv(0.0),errYprv(0.0);
@@ -133,7 +133,7 @@ double TimeToSec() {
 
 void initfunc()
 {
-    pSet=-4;
+    pSet=-2;
     rSet=0;
     ySet=0;
     iLimit=50000;
@@ -195,15 +195,15 @@ void taskfunc()
         pPID=CONSTRAIN(pPID,-pwmxPID,pwmxPID);
         yPID=CONSTRAIN(yPID,-pwmxPID,pwmxPID);
 
-        // m1 = throt + yPID + rPID + pPID ;
-        // m2 = throt - yPID - rPID + pPID ;
-        // m3 = throt + yPID - rPID - pPID ;
-        // m4 = throt - yPID + rPID - pPID ;
+        m1 = throt + yPID + rPID + pPID ;
+        m2 = throt - yPID - rPID + pPID ;
+        m3 = throt + yPID - rPID - pPID ;
+        m4 = throt - yPID + rPID - pPID ;
 
-        m1 = throt + rPID + pPID ;
-        m2 = throt - rPID + pPID ;
-        m3 = throt - rPID - pPID ;
-        m4 = throt + rPID - pPID ;
+        // m1 = throt + rPID + pPID ;
+        // m2 = throt - rPID + pPID ;
+        // m3 = throt - rPID - pPID ;
+        // m4 = throt + rPID - pPID ;
 
         // m1 = throt + rPID;
         // m2 = throt - rPID;

@@ -119,9 +119,9 @@ esp_err_t slider_handler(httpd_req_t *req) {
                 case 1: slider1_value = value; throt=value; break;
                 case 2: slider2_value = value; alpha=value; break;
                 // case 2: slider2_value = value; madgwick.setBeta(value); break;
-                case 3: slider3_value = value; rKp=pKp=value; break;
-                case 4: slider4_value = value; rKi=pKi=value; break;
-                case 5: slider5_value = value; rKd=pKd=value; break;
+                case 3: slider3_value = value; yKp=value; break;
+                case 4: slider4_value = value; yKi=value; break;
+                case 5: slider5_value = value; yKd=value; break;
                 default: break;
             }
         }
