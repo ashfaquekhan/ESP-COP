@@ -49,8 +49,8 @@ float dt;
 float ax, ay, az, gx, gy, gz;
 bool clamp = true;
 
-float rKp=0.09,rKi=0.0002,rKd=0.07;
-float pKp=0.09,pKi=0.0002,pKd=0.07;
+float rKp=0.09,rKi=0.0001,rKd=0.07;
+float pKp=0.09,pKi=0.0001,pKd=0.07;
 float yKp=0.0,yKi=0.0,yKd=0.0;
 
 float errR,errP,errY;
@@ -133,7 +133,7 @@ double TimeToSec() {
 
 void initfunc()
 {
-    pSet=-3;
+    pSet=-4;
     rSet=0;
     ySet=0;
     iLimit=50000;
