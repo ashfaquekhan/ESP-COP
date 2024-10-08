@@ -10,12 +10,13 @@
 #include "freertos/task.h"
 #include "MadgwickAHRS.h"
 
+// External variables
 extern Madgwick madgwick;
 extern float alpha;
-extern float pKp,pKi,pKd;
-extern float rKp,rKi,rKd;
-extern float yKp,yKi,yKd;
-extern float iP,iR,iY;
+extern float pKp, pKi, pKd;
+extern float rKp, rKi, rKd;
+extern float yKp, yKi, yKd;
+extern float iP, iR, iY;
 
 extern int throt;
 extern float tKf;
@@ -31,7 +32,7 @@ float slider3_value = pKi;
 float slider4_value = pKd;
 float slider5_value = throt;
 
-bool extern motrState ;  // Boolean flag for start/stop
+bool extern motrState;  // Boolean flag for start/stop
 
 // HTML content for the webpage with input fields, buttons, and start/stop control
 const char* html_content = "<!DOCTYPE html>\
@@ -42,7 +43,7 @@ const char* html_content = "<!DOCTYPE html>\
 <body>\
 <h2>Set Float Values</h2>\
 <div>\
-  <label for='input1'>Throtle:</label>\
+  <label for='input1'>Throttle:</label>\
   <input type='number' id='input1' value='10.0' step='1.0' />\
   <button onclick='sendValue(1)'>Send</button><br><br>\
 </div>\
@@ -58,7 +59,7 @@ const char* html_content = "<!DOCTYPE html>\
 </div>\
 <div>\
   <label for='input4'>Value I:</label>\
-  <input type='number' id='input4' value='0.001' step='0.001' />\
+  <input type='number' id='input4' value='0.0001' step='0.0001' />\
   <button onclick='sendValue(4)'>Send</button><br><br>\
 </div>\
 <div>\
@@ -87,6 +88,22 @@ function toggleStartStop() {\
         btn.innerHTML = 'Start';\
     }\
 }\
+function fetchValues() {\
+    var xhr = new XMLHttpRequest();\
+    xhr.open('GET', '/getValues', true);\
+    xhr.onload = function() {\
+        if (xhr.status === 200) {\
+            var data = JSON.parse(xhr.responseText);\
+            document.getElementById('input1').value = data.throt;\
+            document.getElementById('input2').value = data.alpha;\
+            document.getElementById('input3').value = data.pKp;\
+            document.getElementById('input4').value = data.pKi;\
+            document.getElementById('input5').value = data.pKd;\
+        }\
+    };\
+    xhr.send();\
+}\
+window.onload = fetchValues;\
 </script>\
 </body>\
 </html>";
@@ -94,6 +111,18 @@ function toggleStartStop() {\
 // HTTP GET handler for the root page
 esp_err_t get_handler(httpd_req_t *req) {
     httpd_resp_send(req, html_content, HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+}
+
+// HTTP GET handler to fetch current values for sliders
+esp_err_t get_values_handler(httpd_req_t *req) {
+    char response[256];
+    snprintf(response, sizeof(response), 
+             "{\"throt\": %d, \"alpha\": %.3f, \"pKp\": %.3f, \"pKi\": %.3f, \"pKd\": %.3f}", 
+             throt, alpha, pKp, pKi, pKd);
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
 }
 
@@ -110,18 +139,14 @@ esp_err_t slider_handler(httpd_req_t *req) {
         if (httpd_req_get_url_query_str(req, buf, buf_len) == ESP_OK) {
             sscanf(buf, "slider=%d&value=%f", &slider, &value);
             ESP_LOGI(TAG, "Slider %d set to %.3f", slider, value);
-            iP=0;
-            iR=0;
-            iY=0;
+            iP = iR = iY = 0;
             // Update slider values based on the slider number
             switch (slider) {
-                // case 1: slider1_value = value; throt=value; break;
-                case 1: slider1_value = value; throt=value; break;
-                case 2: slider2_value = value; alpha=value; break;
-                // case 2: slider2_value = value; madgwick.setBeta(value); break;
-                case 3: slider3_value = value; pKp=rKp=value; break;
-                case 4: slider4_value = value; pKi=rKi=value; break;
-                case 5: slider5_value = value; pKd=rKd=value; break;
+                case 1: slider1_value = value; throt = value; break;
+                case 2: slider2_value = value; alpha = value; break;
+                case 3: slider3_value = value; pKp = rKp = value; break;
+                case 4: slider4_value = value; pKi = rKi = value; break;
+                case 5: slider5_value = value; pKd = rKd = value; break;
                 default: break;
             }
         }
@@ -161,6 +186,13 @@ httpd_uri_t uri_toggle_start_stop = {
     .user_ctx = NULL
 };
 
+httpd_uri_t uri_get_values = {
+    .uri      = "/getValues",
+    .method   = HTTP_GET,
+    .handler  = get_values_handler,
+    .user_ctx = NULL
+};
+
 // Start the web server
 static httpd_handle_t start_webserver(void) {
     httpd_handle_t server = NULL;
@@ -170,6 +202,7 @@ static httpd_handle_t start_webserver(void) {
         httpd_register_uri_handler(server, &uri_root);
         httpd_register_uri_handler(server, &uri_slider);
         httpd_register_uri_handler(server, &uri_toggle_start_stop);
+        httpd_register_uri_handler(server, &uri_get_values);  // Register new handler
     }
     return server;
 }
@@ -180,10 +213,9 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
         esp_wifi_connect();
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
         esp_wifi_connect();
-        ESP_LOGI(TAG, "Retry to connect to the AP");
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
-        ESP_LOGI(TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
+        ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
     }
 }
 
@@ -223,8 +255,8 @@ void wifi_init(void) {
     esp_wifi_start();
 }
 
-// Task for running Wi-Fi and Web server
-extern "C" void wifi_webserver_task(void* pvParameters) {
+// Main application task for the Wi-Fi webserver
+extern "C" void wifi_webserver_task(void *pvParameters) {
     wifi_init();
     start_webserver();
     vTaskDelete(NULL);
