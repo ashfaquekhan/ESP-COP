@@ -118,7 +118,7 @@ esp_err_t get_handler(httpd_req_t *req) {
 esp_err_t get_values_handler(httpd_req_t *req) {
     char response[256];
     snprintf(response, sizeof(response), 
-             "{\"throt\": %d, \"alpha\": %.3f, \"pKp\": %.3f, \"pKi\": %.3f, \"pKd\": %.3f}", 
+             "{\"throt\": %d, \"alpha\": %.3f, \"pKp\": %.3f, \"pKi\": %.4f, \"pKd\": %.3f}", 
              throt, alpha, pKp, pKi, pKd);
 
     httpd_resp_set_type(req, "application/json");
