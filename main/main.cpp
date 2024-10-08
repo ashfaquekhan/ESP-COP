@@ -61,12 +61,16 @@ float dR,dP,dY;
 float fdR,fdP,fdY;
 float fdRprv,fdPprv,fdYprv;
 
+float fax,fay,faz;
+float prvfax,prvfay,prvfaz;
+
 float rPID,pPID,yPID;
 float rSet,pSet,ySet;
 float rOff(3.0),pOff(3.0),yOff;
 float iLimit;
 int throt = 5; 
 float alpha(0.09); //0.015~0.035
+float alphaAcc(0.009);
 float period(0.001);
 float tKf(0.003);
 bool motrState=false;
@@ -143,6 +147,9 @@ void taskfunc()
         // gpio_set_level(GPIO_NUM_11, 1); // Turn on the LED
         // Get scaled accelerometer and gyroscope values
         _getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+        LOW_PASS_FILTER(ax,fax,prvfax,alphaAcc);
+        LOW_PASS_FILTER(ay,fay,prvfay,alphaAcc);
+
         // Calculate delta time since last update
         dt = TimeToSec() - last_time;
         last_time = TimeToSec();
@@ -318,7 +325,8 @@ void print_task(void *pvParameters)
     while (1)
     {
         // printf("Yaw: %f, Pitch: %f, Roll: %f, dt: %f\n", yaw, pitch, roll, dt);
-        printf("%.2f,%.2f,%.2f\n", roll, pitch, yaw);
+        printf("%.2f,%.2f,%.2f\n",fax,fay,faz);
+        // printf("%.2f,%.2f,%.2f\n", roll, pitch, yaw);
         // printf("%.2f,%.2f,%.2f,%.2f\n",pitch, pPID,gy,iP);
         // printf("%.2f,%.2f,%.2f,%.2f,%.2f\n",roll,rPID,gx,fdR,iR);
         //  printf("%.2f,%.2f\n",dP,fdP);
