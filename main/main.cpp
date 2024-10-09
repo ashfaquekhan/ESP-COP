@@ -139,8 +139,8 @@ double TimeToSec() {
 
 void initfunc()
 {
-    pSet=-5;
-    rSet=-4;
+    pSet=0;
+    rSet=0;
     ySet=0;
     iLimit=50000;
 }
@@ -165,7 +165,7 @@ void taskfunc()
 
         clamp = throt < 10;
         
-        errP = pSet - pitch;
+        errP = (pSet + ptrim) - pitch;
         iP = iPprv + errP;//*dt;
         if(clamp){iP=0;} //clamp
         iP = CONSTRAIN(iP,-iLimit,iLimit);//windup 
@@ -176,7 +176,7 @@ void taskfunc()
         iPprv =iP;
         errPprv=errP; 
 
-        errR = rSet + roll;
+        errR = (rSet + rtrim) + roll;
         iR = iRprv + errR;// *dt;
         if(clamp){iR=0;}
         iR = CONSTRAIN(iR,-iLimit,iLimit);
