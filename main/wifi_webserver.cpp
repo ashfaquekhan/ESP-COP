@@ -18,6 +18,8 @@ extern float rKp, rKi, rKd;
 extern float yKp, yKi, yKd;
 extern float iP, iR, iY;
 
+extern float rtrim,ptrim;
+
 extern int throt;
 extern float tKf;
 
@@ -34,8 +36,8 @@ float slider5_value = throt;
 
 bool extern motrState;  // Boolean flag for start/stop
 
-float slider6_value = yKp; // New slider for yKp
-float slider7_value = yKi; // New slider for yKi
+float slider6_value = rtrim; // New slider for yKp
+float slider7_value = ptrim; // New slider for yKi
 
 // HTML content for the webpage with input fields, buttons, and start/stop control
 const char* html_content = "<!DOCTYPE html>\
@@ -71,13 +73,13 @@ const char* html_content = "<!DOCTYPE html>\
   <button onclick='sendValue(5)'>Send</button><br><br>\
 </div>\
 <div>\
-  <label for='input6'>Yaw Kp:</label>\
-  <input type='number' id='input6' value='0.01' step='0.01' />\
+  <label for='input6'>Roll Trim:</label>\
+  <input type='number' id='input6' value='0.1' step='0.1' />\
   <button onclick='sendValue(6)'>Send</button><br><br>\
 </div>\
 <div>\
-  <label for='input7'>Yaw Ki:</label>\
-  <input type='number' id='input7' value='0.001' step='0.001' />\
+  <label for='input7'>Pitch Trim:</label>\
+  <input type='number' id='input7' value='0.1' step='0.1' />\
   <button onclick='sendValue(7)'>Send</button><br><br>\
 </div>\
 <div>\
@@ -112,8 +114,8 @@ function fetchValues() {\
             document.getElementById('input3').value = data.pKp;\
             document.getElementById('input4').value = data.pKi;\
             document.getElementById('input5').value = data.pKd;\
-            document.getElementById('input6').value = data.yKp;\
-            document.getElementById('input7').value = data.yKi;\
+            document.getElementById('input6').value = data.rtrim;\
+            document.getElementById('input7').value = data.ptrim;\
         }\
     };\
     xhr.send();\
@@ -129,19 +131,17 @@ esp_err_t get_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
-// Update the get_values_handler to include yKp and yKi
 esp_err_t get_values_handler(httpd_req_t *req) {
     char response[256];
     snprintf(response, sizeof(response), 
-             "{\"throt\": %d, \"alpha\": %.3f, \"pKp\": %.3f, \"pKi\": %.4f, \"pKd\": %.3f, \"yKp\": %.3f, \"yKi\": %.3f}", 
-             throt, alpha, pKp, pKi, pKd, yKp, yKi);
+             "{\"throt\": %d, \"alpha\": %.3f, \"pKp\": %.3f, \"pKi\": %.4f, \"pKd\": %.3f, \"rtrim\": %.1f, \"ptrim\": %.1f}", 
+             throt, alpha, pKp, pKi, pKd, rtrim, ptrim);
 
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
 }
 
-// Update the slider_handler to include yKp and yKi
 esp_err_t slider_handler(httpd_req_t *req) {
     char* buf;
     size_t buf_len;
@@ -162,8 +162,8 @@ esp_err_t slider_handler(httpd_req_t *req) {
                 case 3: slider3_value = value; pKp = rKp = value; break;
                 case 4: slider4_value = value; pKi = rKi = value; break;
                 case 5: slider5_value = value; pKd = rKd = value; break;
-                case 6: slider6_value = value; yKp = value; break;
-                case 7: slider7_value = value; yKi = value; break;
+                case 6: slider6_value = value; rtrim = value; break;
+                case 7: slider7_value = value; ptrim = value; break;
                 default: break;
             }
         }
