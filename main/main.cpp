@@ -50,8 +50,8 @@ float dt;
 float ax, ay, az, gx, gy, gz;
 bool clamp = true;
         //P: 0.14 | I:0.0003 | D:0.08 
-float rKp=0.14,rKi=0.0003,rKd=0.08; 
-float pKp=0.14,pKi=0.0003,pKd=0.08;
+float rKp=0.08,rKi=0.0002,rKd=0.035; 
+float pKp=0.08,pKi=0.0002,pKd=0.035;
 float yKp=0.1,yKi=0.0009,yKd=0.0;
 
 float rtrim,ptrim;
@@ -74,7 +74,7 @@ float rSet,pSet,ySet;
 float rOff(3.0),pOff(3.0),yOff;
 float iLimit;
 int throt = 5; 
-float alpha(0.09); //0.015~0.035
+float alpha(0.099); //0.015~0.035
 // float alphaAcc(0.09);
 float period(0.001);
 float tKf(0.003);
@@ -145,7 +145,7 @@ double TimeToSec() {
 
 void initfunc()
 {
-    pSet=1;
+    pSet=0;
     rSet=0;
     ySet=0;
     iLimit=50000;
@@ -178,7 +178,7 @@ void taskfunc()
         iPprv =iP;
         errPprv=errP; 
 
-        errR = (rSet + rtrim) + roll;
+        errR = (rSet + rtrim) - roll;
         iR = iRprv + errR;// *dt;
         if(clamp){iR=0;}
         iR = CONSTRAIN(iR,-iLimit,iLimit);
@@ -206,15 +206,15 @@ void taskfunc()
         pPID=CONSTRAIN(pPID,-pwmxPID,pwmxPID);
         yPID=CONSTRAIN(yPID,-pwmxPID,pwmxPID);
 
-        m1 = throt + yPID + rPID + pPID ;
-        m2 = throt - yPID - rPID + pPID ;
-        m3 = throt + yPID - rPID - pPID ;
-        m4 = throt - yPID + rPID - pPID ;
+        // m1 = throt + yPID + rPID + pPID ;
+        // m2 = throt - yPID - rPID + pPID ;
+        // m3 = throt + yPID - rPID - pPID ;
+        // m4 = throt - yPID + rPID - pPID ;
 
-        // m1 = throt + rPID + pPID ;
-        // m2 = throt - rPID + pPID ;
-        // m3 = throt - rPID - pPID ;
-        // m4 = throt + rPID - pPID ;
+        m1 = throt + rPID + pPID ;
+        m2 = throt - rPID + pPID ;
+        m3 = throt - rPID - pPID ;
+        m4 = throt + rPID - pPID ;
 
         // m1 = throt + rPID;
         // m2 = throt - rPID;
@@ -380,7 +380,7 @@ void print_task(void *pvParameters)
     {
         // printf("Yaw: %f, Pitch: %f, Roll: %f, dt: %f\n", yaw, pitch, roll, dt);
         // printf("%.2f,%.2f,%.2f\n",fax,fay,faz);
-        printf("%.2f,%.2f,%.2f\n", roll, pitch, yaw);
+        printf("%.2f,%.2f,%.2f\n", gx,-fdR,roll);
         // printf("%.2f,%.2f,%.2f,%.2f\n",pitch, pPID,gy,iP);
         // printf("%.2f,%.2f,%.2f,%.2f,%.2f\n",roll,rPID,gx,fdR,iR);
         //  printf("%.2f,%.2f\n",dP,fdP);
