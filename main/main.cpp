@@ -50,8 +50,8 @@ float dt;
 float ax, ay, az, gx, gy, gz;
 bool clamp = true;
         //P: 0.14 | I:0.0003 | D:0.08 
-float rKp=0.08,rKi=0.0002,rKd=0.035; 
-float pKp=0.08,pKi=0.0002,pKd=0.035;
+float rKp=0.1,rKi=0.0003,rKd=0.08; 
+float pKp=0.1,pKi=0.0003,pKd=0.08;
 float yKp=0.1,yKi=0.0009,yKd=0.0;
 
 float rtrim,ptrim;
@@ -74,7 +74,7 @@ float rSet,pSet,ySet;
 float rOff(3.0),pOff(3.0),yOff;
 float iLimit;
 int throt = 5; 
-float alpha(0.099); //0.015~0.035
+float alpha(0.2); //0.015~0.035
 // float alphaAcc(0.09);
 float period(0.001);
 float tKf(0.003);
