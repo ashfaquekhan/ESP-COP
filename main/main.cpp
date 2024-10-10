@@ -178,7 +178,7 @@ void taskfunc()
         iPprv =iP;
         errPprv=errP; 
 
-        errR = (rSet + rtrim) - roll;
+        errR = (rSet + rtrim) + roll;
         iR = iRprv + errR;// *dt;
         if(clamp){iR=0;}
         iR = CONSTRAIN(iR,-iLimit,iLimit);
@@ -206,15 +206,15 @@ void taskfunc()
         pPID=CONSTRAIN(pPID,-pwmxPID,pwmxPID);
         yPID=CONSTRAIN(yPID,-pwmxPID,pwmxPID);
 
-        // m1 = throt + yPID + rPID + pPID ;
-        // m2 = throt - yPID - rPID + pPID ;
-        // m3 = throt + yPID - rPID - pPID ;
-        // m4 = throt - yPID + rPID - pPID ;
+        m1 = throt + yPID + rPID + pPID ;
+        m2 = throt - yPID - rPID + pPID ;
+        m3 = throt + yPID - rPID - pPID ;
+        m4 = throt - yPID + rPID - pPID ;
 
-        m1 = throt + rPID + pPID ;
-        m2 = throt - rPID + pPID ;
-        m3 = throt - rPID - pPID ;
-        m4 = throt + rPID - pPID ;
+        // m1 = throt + rPID + pPID ;
+        // m2 = throt - rPID + pPID ;
+        // m3 = throt - rPID - pPID ;
+        // m4 = throt + rPID - pPID ;
 
         // m1 = throt + rPID;
         // m2 = throt - rPID;
@@ -380,8 +380,8 @@ void print_task(void *pvParameters)
     {
         // printf("Yaw: %f, Pitch: %f, Roll: %f, dt: %f\n", yaw, pitch, roll, dt);
         // printf("%.2f,%.2f,%.2f\n",fax,fay,faz);
-        printf("%.2f,%.2f,%.2f\n", gx,-fdR,roll);
-        // printf("%.2f,%.2f,%.2f,%.2f\n",pitch, pPID,gy,iP);
+        // printf("%.2f,%.2f,%.2f\n", gx,-fdR,roll);
+        printf("%.2f,%.2f,%.2f,%.2f\n",pitch,roll,fdR,fdP);
         // printf("%.2f,%.2f,%.2f,%.2f,%.2f\n",roll,rPID,gx,fdR,iR);
         //  printf("%.2f,%.2f\n",dP,fdP);
         //  printf("%.2f,%.2f\n",dR,fdR);a

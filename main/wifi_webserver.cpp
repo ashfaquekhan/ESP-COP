@@ -135,7 +135,7 @@ esp_err_t get_values_handler(httpd_req_t *req) {
     char response[256];
     snprintf(response, sizeof(response), 
              "{\"throt\": %d, \"alpha\": %.3f, \"pKp\": %.3f, \"pKi\": %.4f, \"pKd\": %.3f, \"rtrim\": %.1f, \"ptrim\": %.1f}", 
-             throt, alpha, pKp, pKi, pKd, rtrim, ptrim);
+             throt, alpha, yKp, yKi, yKd, rtrim, ptrim);
 
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
@@ -159,9 +159,12 @@ esp_err_t slider_handler(httpd_req_t *req) {
             switch (slider) {
                 case 1: slider1_value = value; throt = value; break;
                 case 2: slider2_value = value; alpha = value; break;
-                case 3: slider3_value = value; pKp = rKp = value; break;
-                case 4: slider4_value = value; pKi = rKi = value; break;
-                case 5: slider5_value = value; pKd = rKd = value; break;
+                // case 3: slider3_value = value; pKp = rKp = value; break;
+                // case 4: slider4_value = value; pKi = rKi = value; break;
+                // case 5: slider5_value = value; pKd = rKd = value; break;
+                case 3: slider3_value = value; yKp = value; break;
+                case 4: slider4_value = value; yKi = value; break;
+                case 5: slider5_value = value; yKd = value; break;
                 case 6: slider6_value = value; rtrim = value; break;
                 case 7: slider7_value = value; ptrim = value; break;
                 default: break;
