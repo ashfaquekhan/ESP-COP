@@ -144,7 +144,7 @@ double TimeToSec() {
 
 void initfunc()
 {
-    pSet=0;
+    pSet=1;
     rSet=0;
     ySet=0;
     iLimit=50000;
