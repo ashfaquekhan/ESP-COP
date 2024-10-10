@@ -180,7 +180,7 @@ void taskfunc()
         iP = CONSTRAIN(iP,-iLimit,iLimit);//windup 
         dP= gy;
         // dP = (errP-errPprv)/dt;
-        // LOW_PASS_FILTER(dP,fdP,fdPprv,alpha);
+        LOW_PASS_FILTER(dP,fdP,fdPprv,alpha);
         pPID = 0.01 * (pKp*errP + pKi*iP - pKd*fdP);         //scale 0.01(scale for 1)*50(max PWM) = 0.5
         iPprv =iP;
         errPprv=errP; 
@@ -191,7 +191,7 @@ void taskfunc()
         iR = CONSTRAIN(iR,-iLimit,iLimit);
         dR = -gx;
         // dR = (errR - errRprv)/0.0001;
-        // LOW_PASS_FILTER(dR,fdR,fdRprv,alpha);
+        LOW_PASS_FILTER(dR,fdR,fdRprv,alpha);
         rPID = 0.01 * (rKp*errR + rKi*iR - rKd*fdR);    //scale 0.01(scale for 1)*50(max PWM) = 0.5
         iRprv = iR;
         errRprv=errR;
