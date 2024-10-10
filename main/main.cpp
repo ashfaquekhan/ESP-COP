@@ -74,7 +74,7 @@ float rSet,pSet,ySet;
 float rOff(3.0),pOff(3.0),yOff;
 float iLimit;
 int throt = 5; 
-float alpha(0.2); //0.015~0.035
+float alpha(0.009); //0.015~0.035
 // float alphaAcc(0.09);
 float period(0.001);
 float tKf(0.003);
@@ -206,15 +206,15 @@ void taskfunc()
         pPID=CONSTRAIN(pPID,-pwmxPID,pwmxPID);
         yPID=CONSTRAIN(yPID,-pwmxPID,pwmxPID);
 
-        m1 = throt + yPID + rPID + pPID ;
-        m2 = throt - yPID - rPID + pPID ;
-        m3 = throt + yPID - rPID - pPID ;
-        m4 = throt - yPID + rPID - pPID ;
+        // m1 = throt + yPID + rPID + pPID ;
+        // m2 = throt - yPID - rPID + pPID ;
+        // m3 = throt + yPID - rPID - pPID ;
+        // m4 = throt - yPID + rPID - pPID ;
 
-        // m1 = throt + rPID + pPID ;
-        // m2 = throt - rPID + pPID ;
-        // m3 = throt - rPID - pPID ;
-        // m4 = throt + rPID - pPID ;
+        m1 = throt + rPID + pPID ;
+        m2 = throt - rPID + pPID ;
+        m3 = throt - rPID - pPID ;
+        m4 = throt + rPID - pPID ;
 
         // m1 = throt + rPID;
         // m2 = throt - rPID;
