@@ -53,7 +53,7 @@ float rKp=0.14,rKi=0.0003,rKd=0.08;
 float pKp=0.14,pKi=0.0003,pKd=0.08;
 float yKp=0.1,yKi=0.0009,yKd=0.0;
 
-float rtrim(0.0),ptrim(0.0);
+float rtrim,ptrim;
 
 float errR,errP,errY;
 float errRprv(0.0),errPprv(0.0),errYprv(0.0);
@@ -64,7 +64,9 @@ float fdR,fdP,fdY;
 float fdRprv,fdPprv,fdYprv;
 
 float fax,fay,faz;
+float fgx,fgy,fgz;
 float prvfax,prvfay,prvfaz;
+float prvfgx,prvfgy,prvfgz;
 
 float rPID,pPID,yPID;
 float rSet,pSet,ySet;
@@ -72,9 +74,12 @@ float rOff(3.0),pOff(3.0),yOff;
 float iLimit;
 int throt = 5; 
 float alpha(0.09); //0.015~0.035
-float alphaAcc(0.009);
+// float alphaAcc(0.09);
 float period(0.001);
 float tKf(0.003);
+// float alphaC = 0.98; // Complementary filter constant
+// float dtC = 0.0001;    // Time step (in seconds)
+
 bool motrState=false;
 int m1,m2,m3,m4;
 int m1s,m2s,m3s,m4s;
@@ -146,15 +151,19 @@ void initfunc()
 }
 void taskfunc()
 {
+        dt = TimeToSec() - last_time;
+        last_time = TimeToSec();
         // gpio_set_level(GPIO_NUM_11, 1); // Turn on the LED
         // Get scaled accelerometer and gyroscope values
         _getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-        LOW_PASS_FILTER(ax,fax,prvfax,alphaAcc);
-        LOW_PASS_FILTER(ay,fay,prvfay,alphaAcc);
-
+        // LOW_PASS_FILTER(ax,fax,prvfax,alphaAcc);
+        // LOW_PASS_FILTER(ay,fay,prvfay,alphaAcc);
+        // LOW_PASS_FILTER(az,faz,prvfaz,alphaAcc);
+        // LOW_PASS_FILTER(gx,fgx,prvfgx,alphaAcc);
+        // LOW_PASS_FILTER(gy,fgy,prvfgy,alphaAcc);
+        // LOW_PASS_FILTER(gz,fgz,prvfgz,alphaAcc);
         // Calculate delta time since last update
-        dt = TimeToSec() - last_time;
-        last_time = TimeToSec();
+
 
         // Update Madgwick filter with new data
         madgwick.updateIMU(gx, gy, gz, ax, ay, az, dt);
@@ -171,7 +180,7 @@ void taskfunc()
         iP = CONSTRAIN(iP,-iLimit,iLimit);//windup 
         dP= gy;
         // dP = (errP-errPprv)/dt;
-        LOW_PASS_FILTER(dP,fdP,fdPprv,alpha);
+        // LOW_PASS_FILTER(dP,fdP,fdPprv,alpha);
         pPID = 0.01 * (pKp*errP + pKi*iP - pKd*fdP);         //scale 0.01(scale for 1)*50(max PWM) = 0.5
         iPprv =iP;
         errPprv=errP; 
@@ -182,7 +191,7 @@ void taskfunc()
         iR = CONSTRAIN(iR,-iLimit,iLimit);
         dR = -gx;
         // dR = (errR - errRprv)/0.0001;
-        LOW_PASS_FILTER(dR,fdR,fdRprv,alpha);
+        // LOW_PASS_FILTER(dR,fdR,fdRprv,alpha);
         rPID = 0.01 * (rKp*errR + rKi*iR - rKd*fdR);    //scale 0.01(scale for 1)*50(max PWM) = 0.5
         iRprv = iR;
         errRprv=errR;
@@ -327,8 +336,8 @@ void print_task(void *pvParameters)
     while (1)
     {
         // printf("Yaw: %f, Pitch: %f, Roll: %f, dt: %f\n", yaw, pitch, roll, dt);
-        printf("%.2f,%.2f,%.2f\n",fax,fay,faz);
-        // printf("%.2f,%.2f,%.2f\n", roll, pitch, yaw);
+        // printf("%.2f,%.2f,%.2f\n",fax,fay,faz);
+        printf("%.2f,%.2f,%.2f\n", roll, pitch, yaw);
         // printf("%.2f,%.2f,%.2f,%.2f\n",pitch, pPID,gy,iP);
         // printf("%.2f,%.2f,%.2f,%.2f,%.2f\n",roll,rPID,gx,fdR,iR);
         //  printf("%.2f,%.2f\n",dP,fdP);
