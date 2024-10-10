@@ -305,6 +305,15 @@ void mpu6050_task(void *pvParameters) {
 void mpu6050_task_direct(void *pvParameters) {
     // Initialize the MPU6050
     mpu.initialize();
+
+    mpu.setXAccelOffset(-707);
+    mpu.setYAccelOffset(696);
+    mpu.setZAccelOffset(1106);
+
+    mpu.setXGyroOffset(118);
+    mpu.setYGyroOffset(-31);
+    mpu.setZGyroOffset(62);
+
     ESP_LOGI(TAG, "MPU6050 initialized, DeviceID=0x%x", mpu.getDeviceID());
 
     // esp_rom_gpio_pad_select_gpio(GPIO_NUM_11);
