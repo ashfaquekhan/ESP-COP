@@ -15,7 +15,8 @@
 #include <esp_timer.h>
 #include <driver/ledc.h>
 
-#define RAD_TO_DEG (180.0 / M_PI)
+#define RAD_TO_DEG (180.0/M_PI)
+#define DEG_TO_RAD 0.0174533
 
 #define CONSTRAIN(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
 
@@ -156,14 +157,6 @@ void taskfunc()
         // gpio_set_level(GPIO_NUM_11, 1); // Turn on the LED
         // Get scaled accelerometer and gyroscope values
         _getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-        // LOW_PASS_FILTER(ax,fax,prvfax,alphaAcc);
-        // LOW_PASS_FILTER(ay,fay,prvfay,alphaAcc);
-        // LOW_PASS_FILTER(az,faz,prvfaz,alphaAcc);
-        // LOW_PASS_FILTER(gx,fgx,prvfgx,alphaAcc);
-        // LOW_PASS_FILTER(gy,fgy,prvfgy,alphaAcc);
-        // LOW_PASS_FILTER(gz,fgz,prvfgz,alphaAcc);
-        // Calculate delta time since last update
-
 
         // Update Madgwick filter with new data
         madgwick.updateIMU(gx, gy, gz, ax, ay, az, dt);
@@ -272,6 +265,47 @@ void IRAM_ATTR timer_callback(void* arg)
 void mpu6050_task(void *pvParameters) {
     // Initialize the MPU6050
     mpu.initialize();
+
+//-------------------------------------------
+	// Get DeviceID
+	uint8_t devid = mpu.getDeviceID();
+	ESP_LOGI(TAG, "devid=0x%x", devid);
+
+	// Get the sample rate
+	ESP_LOGI(TAG, "getRate()=%d", mpu.getRate());
+	// Set the sample rate to 8kHz
+	if (mpu.getRate() != 0) mpu.setRate(0);
+
+	// Get FSYNC configuration value
+	ESP_LOGI(TAG, "getExternalFrameSync()=%d", mpu.getExternalFrameSync());
+	// Disable FSYNC and set 260 Hz Acc filtering, 256 Hz Gyro filtering
+	if (mpu.getExternalFrameSync() != 0) mpu.setExternalFrameSync(0);
+
+	// Set Digital Low Pass Filter
+	ESP_LOGI(TAG, "getDLPFMode()=%d", mpu.getDLPFMode());
+	if (mpu.getDLPFMode() != 6) mpu.setDLPFMode(6);
+
+	// Get Accelerometer Scale Range
+	ESP_LOGI(TAG, "getFullScaleAccelRange()=%d", mpu.getFullScaleAccelRange());
+	// Set Accelerometer Full Scale Range to ±2g
+	if (mpu.getFullScaleAccelRange() != 0) mpu.setFullScaleAccelRange(0); // -2 --> +2[g]
+	accel_sensitivity = 16384.0; // g
+
+	// Get Gyro Scale Range
+	ESP_LOGI(TAG, "getFullScaleGyroRange()=%d", mpu.getFullScaleGyroRange());
+	// Set Gyro Full Scale Range to ±250deg/s
+	if (mpu.getFullScaleGyroRange() != 0) mpu.setFullScaleGyroRange(0); // -250 --> +250[Deg/Sec]
+	gyro_sensitivity = 131.0; // Deg/Sec
+//-------------------------------------------
+
+    mpu.setXAccelOffset(-707);
+    mpu.setYAccelOffset(696);
+    mpu.setZAccelOffset(1106);
+
+    mpu.setXGyroOffset(118);
+    mpu.setYGyroOffset(-31);
+    mpu.setZGyroOffset(62);
+
     ESP_LOGI(TAG, "MPU6050 initialized, DeviceID=0x%x", mpu.getDeviceID());
 
     const esp_timer_create_args_t timer_args = {
