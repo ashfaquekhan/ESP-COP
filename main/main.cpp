@@ -52,7 +52,7 @@ bool clamp = true;
         //P: 0.14 | I:0.0003 | D:0.08 
 float rKp=0.2,rKi=0.0003,rKd=0.15; 
 float pKp=0.2,pKi=0.0003,pKd=0.15;
-float yKp=0.0,yKi=0.0,yKd=0.0;
+float yKp=0.12,yKi=0.0005,yKd=0.0;
 
 float rtrim,ptrim;
 
