@@ -50,9 +50,9 @@ float dt;
 float ax, ay, az, gx, gy, gz;
 bool clamp = true;
         //P: 0.14 | I:0.0003 | D:0.08 
-float rKp=0.1,rKi=0.0003,rKd=0.08; 
-float pKp=0.1,pKi=0.0003,pKd=0.08;
-float yKp=0.1,yKi=0.0009,yKd=0.0;
+float rKp=0.1,rKi=0.0003,rKd=0.06; 
+float pKp=0.1,pKi=0.0003,pKd=0.06;
+float yKp=0.0,yKi=0.0,yKd=0.0;
 
 float rtrim,ptrim;
 
@@ -74,7 +74,7 @@ float rSet,pSet,ySet;
 float rOff(3.0),pOff(3.0),yOff;
 float iLimit;
 int throt = 5; 
-float alpha(0.009); //0.015~0.035
+float alpha(0.01); //0.015~0.035
 // float alphaAcc(0.09);
 float period(0.001);
 float tKf(0.003);
@@ -85,7 +85,8 @@ bool motrState=false;
 int m1,m2,m3,m4;
 int m1s,m2s,m3s,m4s;
 double current_time, last_time;
-int pwmxPID=200;
+int pwmxPID=60;
+int pwmxPIDy=30;
 #define LOOP_RATE_MS 1  // Desired loop rate in MS(e.g., 100 ms)
 static esp_timer_handle_t timer; // Timer handle
 
@@ -145,8 +146,8 @@ double TimeToSec() {
 
 void initfunc()
 {
-    pSet=0;
-    rSet=0;
+    pSet=-0;
+    rSet=-0;
     ySet=0;
     iLimit=50000;
 }
@@ -165,27 +166,25 @@ void taskfunc()
         yaw   = gz;
         // yaw   = madgwick.getYaw();
 
-        clamp = throt < 10;
+        clamp = throt < 20;
         
         errP = (pSet + ptrim) - pitch;
         iP = iPprv + errP;//*dt;
         if(clamp){iP=0;} //clamp
         iP = CONSTRAIN(iP,-iLimit,iLimit);//windup 
         dP= gy;
-        // dP = (errP-errPprv)/dt;
         LOW_PASS_FILTER(dP,fdP,fdPprv,alpha);
-        pPID = 0.01 * (pKp*errP + pKi*iP - pKd*fdP);         //scale 0.01(scale for 1)*50(max PWM) = 0.5
+        pPID = (pKp*errP + pKi*iP - pKd*fdP);         //scale 0.01(scale for 1)*50(max PWM) = 0.5
         iPprv =iP;
         errPprv=errP; 
 
-        errR = (rSet + rtrim) + roll;
+        errR = (rSet + rtrim) - roll;
         iR = iRprv + errR;// *dt;
         if(clamp){iR=0;}
         iR = CONSTRAIN(iR,-iLimit,iLimit);
-        dR = -gx;
-        // dR = (errR - errRprv)/0.0001;
+        dR = gx;
         LOW_PASS_FILTER(dR,fdR,fdRprv,alpha);
-        rPID = 0.01 * (rKp*errR + rKi*iR - rKd*fdR);    //scale 0.01(scale for 1)*50(max PWM) = 0.5
+        rPID = (rKp*errR + rKi*iR - rKd*fdR);    //scale 0.01(scale for 1)*50(max PWM) = 0.5
         iRprv = iR;
         errRprv=errR;
 
@@ -193,28 +192,24 @@ void taskfunc()
         iY = iYprv + errY;//*dt;
         if(clamp){iY=0;}
         iY = CONSTRAIN(iY,-iLimit,iLimit);
-        dY = (errY - errYprv)/0.0001;
-        yPID = 0.01*(yKp*errY + yKi*iY - yKd*fdY);    //scale 0.01(scale for 1)*50(max PWM) = 0.5
+        dY = (errY - errYprv);
+        yPID = (yKp*errY + yKi*iY - yKd*fdY);    //scale 0.01(scale for 1)*50(max PWM) = 0.5
         iYprv = iY;
         errYprv = errY;
-
-        rPID*=pwmxPID;
-        pPID*=pwmxPID;
-        yPID*=pwmxPID;
         
         rPID=CONSTRAIN(rPID,-pwmxPID,pwmxPID);
         pPID=CONSTRAIN(pPID,-pwmxPID,pwmxPID);
         yPID=CONSTRAIN(yPID,-pwmxPID,pwmxPID);
 
-        // m1 = throt + yPID + rPID + pPID ;
-        // m2 = throt - yPID - rPID + pPID ;
-        // m3 = throt + yPID - rPID - pPID ;
-        // m4 = throt - yPID + rPID - pPID ;
+        m1 = throt + yPID - rPID + pPID ;
+        m2 = throt - yPID + rPID + pPID ;
+        m3 = throt + yPID + rPID - pPID ;
+        m4 = throt - yPID - rPID - pPID ;
 
-        m1 = throt + rPID + pPID ;
-        m2 = throt - rPID + pPID ;
-        m3 = throt - rPID - pPID ;
-        m4 = throt + rPID - pPID ;
+        // m1 = throt + rPID + pPID ;
+        // m2 = throt - rPID + pPID ;
+        // m3 = throt - rPID - pPID ;
+        // m4 = throt + rPID - pPID ;
 
         // m1 = throt + rPID;
         // m2 = throt - rPID;
@@ -265,6 +260,13 @@ void IRAM_ATTR timer_callback(void* arg)
 void mpu6050_task(void *pvParameters) {
     // Initialize the MPU6050
     mpu.initialize();
+    mpu.setXAccelOffset(-707);
+    mpu.setYAccelOffset(696);
+    mpu.setZAccelOffset(1106);
+
+    mpu.setXGyroOffset(118);
+    mpu.setYGyroOffset(-31);
+    mpu.setZGyroOffset(62);
 
 //-------------------------------------------
 	// Get DeviceID
@@ -298,13 +300,6 @@ void mpu6050_task(void *pvParameters) {
 	gyro_sensitivity = 131.0; // Deg/Sec
 //-------------------------------------------
 
-    mpu.setXAccelOffset(-707);
-    mpu.setYAccelOffset(696);
-    mpu.setZAccelOffset(1106);
-
-    mpu.setXGyroOffset(118);
-    mpu.setYGyroOffset(-31);
-    mpu.setZGyroOffset(62);
 
     ESP_LOGI(TAG, "MPU6050 initialized, DeviceID=0x%x", mpu.getDeviceID());
 
@@ -381,8 +376,8 @@ void print_task(void *pvParameters)
         // printf("Yaw: %f, Pitch: %f, Roll: %f, dt: %f\n", yaw, pitch, roll, dt);
         // printf("%.2f,%.2f,%.2f\n",fax,fay,faz);
         // printf("%.2f,%.2f,%.2f\n", gx,-fdR,roll);
-        printf("%.2f,%.2f,%.2f,%.2f\n",pitch,roll,fdR,fdP);
-        // printf("%.2f,%.2f,%.2f,%.2f,%.2f\n",roll,rPID,gx,fdR,iR);
+        // printf("%.2f,%.2f,%.2f,%.2f\n",pitch,roll,fdR,fdP);
+        printf("%.2f,%.2f,%.2f,%.2f\n",roll,rPID,gx,fdR);
         //  printf("%.2f,%.2f\n",dP,fdP);
         //  printf("%.2f,%.2f\n",dR,fdR);a
         vTaskDelay(10 / portTICK_PERIOD_MS);
