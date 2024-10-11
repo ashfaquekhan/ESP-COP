@@ -85,8 +85,8 @@ bool motrState=false;
 int m1,m2,m3,m4;
 int m1s,m2s,m3s,m4s;
 double current_time, last_time;
-int pwmxPID=60;
-int pwmxPIDy=30;
+int pwmxPID=100;
+int pwmxPIDy=150;
 #define LOOP_RATE_MS 1  // Desired loop rate in MS(e.g., 100 ms)
 static esp_timer_handle_t timer; // Timer handle
 
@@ -377,7 +377,7 @@ void print_task(void *pvParameters)
         // printf("%.2f,%.2f,%.2f\n",fax,fay,faz);
         // printf("%.2f,%.2f,%.2f\n", gx,-fdR,roll);
         // printf("%.2f,%.2f,%.2f,%.2f\n",pitch,roll,fdR,fdP);
-        printf("%.2f,%.2f,%.2f,%.2f\n",roll,rPID,gx,fdR);
+        // printf("%.2f,%.2f,%.2f,%.2f\n",rKd*fdR,(rKi*iR + errR*rKp),gx,roll);
         //  printf("%.2f,%.2f\n",dP,fdP);
         //  printf("%.2f,%.2f\n",dR,fdR);a
         vTaskDelay(10 / portTICK_PERIOD_MS);
