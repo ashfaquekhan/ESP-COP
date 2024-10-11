@@ -65,7 +65,7 @@ const char* html_content = "<!DOCTYPE html>\
 </div>\
 <div>\
   <label for='input4'>Value I:</label>\
-  <input type='number' id='input4' value='0.0001' step='0.0001' />\
+  <input type='number' id='input4' value='0.00001' step='0.00001' />\
   <button onclick='sendValue(4)'>Send</button><br><br>\
 </div>\
 <div>\
@@ -135,7 +135,7 @@ esp_err_t get_handler(httpd_req_t *req) {
 esp_err_t get_values_handler(httpd_req_t *req) {
     char response[256];
     snprintf(response, sizeof(response), 
-             "{\"throt\": %d, \"alpha\": %.3f, \"Kp\": %.3f, \"Ki\": %.4f, \"Kd\": %.3f, \"rtrim\": %.1f, \"ptrim\": %.1f}", 
+             "{\"throt\": %d, \"alpha\": %.3f, \"Kp\": %.3f, \"Ki\": %.5f, \"Kd\": %.3f, \"rtrim\": %.1f, \"ptrim\": %.1f}", 
              throt, alpha, Kp, Ki, Kd, rtrim, ptrim);
 
     // snprintf(response, sizeof(response), 
@@ -164,13 +164,13 @@ esp_err_t slider_handler(httpd_req_t *req) {
             switch (slider) {
                 case 1: slider1_value = value; throt = value; break;
                 case 2: slider2_value = value; alpha = value; break;
-                case 3: slider3_value = value; pKp = rKp = value; break;
-                case 4: slider4_value = value; pKi = rKi = value; break;
-                case 5: slider5_value = value; pKd = rKd = value; break;
+                case 3: slider3_value = value; Kp= pKp = rKp = value; break;
+                case 4: slider4_value = value; Ki= pKi = rKi = value; break;
+                case 5: slider5_value = value; Kd= pKd = rKd = value; break;
 
-                // case 3: slider3_value = value; yKp = value; break;
-                // case 4: slider4_value = value; yKi = value; break;
-                // case 5: slider5_value = value; yKd = value; break;
+                // case 3: slider3_value = value; Kp=yKp = value; break;
+                // case 4: slider4_value = value; Ki=yKi = value; break;
+                // case 5: slider5_value = value; Kd=yKd = value; break;
                 case 6: slider6_value = value; rtrim = value; break;
                 case 7: slider7_value = value; ptrim = value; break;
                 default: break;
