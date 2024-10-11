@@ -30,9 +30,9 @@ extern float tKf;
 
 // Slider values
 float slider1_value = alpha;
-float slider2_value = pKp;
-float slider3_value = pKi;
-float slider4_value = pKd;
+float slider2_value = Kp =pKp;
+float slider3_value = Ki =pKi;
+float slider4_value = Kd =pKd;
 float slider5_value = throt;
 
 bool extern motrState;  // Boolean flag for start/stop
