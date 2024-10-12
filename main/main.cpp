@@ -57,7 +57,7 @@ float rKp=0.2,rKi=0.0003,rKd=0.089;
 float pKp=0.2,pKi=0.0003,pKd=0.089;
 float yKp=0.12,yKi=0.0005,yKd=0.0;
 
-float rtrim(30),ptrim(-50);
+float rtrim(0),ptrim(0);
 
 float errR,errP,errY;
 float errRprv(0.0),errPprv(0.0),errYprv(0.0);
