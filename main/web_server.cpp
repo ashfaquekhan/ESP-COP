@@ -47,16 +47,17 @@ esp_err_t js_data_handler(httpd_req_t *req) {
     
     char power_param[4];
     if (httpd_query_key_value(buf, "power", power_param, sizeof(power_param)) == ESP_OK) {
-        isPowerOn = (strcmp(power_param, "true") == 0);
+        isPowerOn = (strcmp(power_param, "ON") == 0);
     }
+    
     Rin=joystick_data.x2;
     Pin=joystick_data.y2;
     throt=joystick_data.x;
     Yin=joystick_data.y;
 
     // // Log the joystick values and power state
-    // ESP_LOGI(TAG, "Joystick Values -> X: %d, Y: %d, X2: %d, Y2: %d, Power: %s", 
-    //          joystick_data.x, joystick_data.y, joystick_data.x2, joystick_data.y2, isPowerOn ? "ON" : "OFF");
+    ESP_LOGI(TAG, "Joystick Values -> X: %d, Y: %d, X2: %d, Y2: %d, Power: %s", 
+             joystick_data.x, joystick_data.y, joystick_data.x2, joystick_data.y2, isPowerOn ? "ON" : "OFF");
 
     httpd_resp_send(req, "OK", 2);
     return ESP_OK;

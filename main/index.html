@@ -121,20 +121,21 @@
         });
 
         setInterval(function() {
-        if (!isPowerOn) return;
-
         var x1 = lockX1 ? 0 : Math.round(joystick1.deltaX());
         var y1 = lockY1 ? 0 : -Math.round(joystick1.deltaY());
         var x2 = lockX2 ? 0 : Math.round(joystick2.deltaX());
         var y2 = lockY2 ? 0 : -Math.round(joystick2.deltaY());
 
+        // Update the displayed results
         document.getElementById('result').innerHTML = `Orange X: ${x1} Y: ${y1}`;
         document.getElementById('result2').innerHTML = `Cyan X: ${x2} Y: ${y2}`;
 
+        // Send joystick data with power state
         var xhr = new XMLHttpRequest();
-        xhr.open('PUT', `./jsData.html?x=${x1}&y=${y1}&x2=${x2}&y2=${y2}&power=${isPowerOn}`);
+        xhr.open('PUT', `./jsData.html?x=${x1}&y=${y1}&x2=${x2}&y2=${y2}&power=${isPowerOn ? "ON" : "OFF"}`);
         xhr.send();
-    }, 33);
+        }, 33);
+
     </script>
 </body>
 </html>
