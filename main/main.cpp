@@ -398,7 +398,7 @@ void print_task(void *pvParameters)
         {
             battCount++;
         }
-        if(battCount>200)
+        if(battCount>100)
         {
             motrState=false;
         }
