@@ -20,8 +20,8 @@ typedef struct {
 } joystick_data_t;
 
 joystick_data_t joystick_data = {0, 0, 0, 0};
+bool isPowerOn = false;  // Declare isPowerOn as a global variable
 
-// Joystick data handler
 esp_err_t js_data_handler(httpd_req_t *req) {
     // Allocate a buffer for query string
     char buf[100];
@@ -42,7 +42,19 @@ esp_err_t js_data_handler(httpd_req_t *req) {
     if (httpd_query_key_value(buf, "y2", param, sizeof(param)) == ESP_OK) {
         joystick_data.y2 = atoi(param);
     }
+    
+    // Capture power state
+    char power_param[4];
+    if (httpd_query_key_value(buf, "power", power_param, sizeof(power_param)) == ESP_OK) {
+        // Convert "true"/"false" to boolean value
+        isPowerOn = (strcmp(power_param, "true") == 0);
+    }
 
+    // Log the joystick values and power state
+    ESP_LOGI(TAG, "Joystick Values -> X: %d, Y: %d, X2: %d, Y2: %d, Power: %s", 
+             joystick_data.x, joystick_data.y, joystick_data.x2, joystick_data.y2, isPowerOn ? "ON" : "OFF");
+
+    // Send response back to client
     httpd_resp_send(req, "OK", 2);
     return ESP_OK;
 }
@@ -113,7 +125,6 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
         ESP_LOGI(TAG, "Got IP: %s", ip);
     }
 }
-
 
 // Wi-Fi initialization
 void wifi_init(void) {
