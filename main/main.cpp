@@ -14,6 +14,9 @@
 #include <driver/gpio.h>
 #include <esp_timer.h>
 #include <driver/ledc.h>
+#include "driver/adc.h"
+#include "esp_adc_cal.h"
+
 
 #define RAD_TO_DEG (180.0/M_PI)
 #define DEG_TO_RAD 0.0174533
@@ -50,11 +53,11 @@ float dt;
 float ax, ay, az, gx, gy, gz;
 bool clamp = true;
         //P: 0.14 | I:0.0003 | D:0.08 
-float rKp=0.2,rKi=0.0003,rKd=0.15; 
-float pKp=0.2,pKi=0.0003,pKd=0.15;
+float rKp=0.2,rKi=0.0003,rKd=0.89; 
+float pKp=0.2,pKi=0.0003,pKd=0.89;
 float yKp=0.12,yKi=0.0005,yKd=0.0;
 
-float rtrim,ptrim;
+float rtrim(30),ptrim(-50);
 
 float errR,errP,errY;
 float errRprv(0.0),errPprv(0.0),errYprv(0.0);
@@ -74,7 +77,7 @@ float rSet,pSet,ySet;
 float rOff(3.0),pOff(3.0),yOff;
 float iLimit;
 int throt = 5; 
-float alpha(0.2); //0.015~0.035
+float alpha(0.199); //0.015~0.035
 // float alphaAcc(0.09);
 float period(0.001);
 float tKf(0.003);
@@ -89,6 +92,16 @@ int pwmxPID=100;
 int pwmxPIDy=150;
 #define LOOP_RATE_MS 1  // Desired loop rate in MS(e.g., 100 ms)
 static esp_timer_handle_t timer; // Timer handle
+
+// Define the ADC width and attenuation
+#define ADC_WIDTH ADC_WIDTH_BIT_12  // 12-bit resolution: values range from 0 to 4095
+#define ADC_ATTEN ADC_ATTEN_DB_11   // Attenuation 11dB: allows reading up to 3.6V
+#define ADC_CHANNEL ADC1_CHANNEL_8  // Change this based on the pin you use
+int adc_value;
+float volt;
+bool voltInit=false;
+int battCount;
+
 
 // LEDC timer configuration
 void init_ledc_timer() {
@@ -373,6 +386,27 @@ void print_task(void *pvParameters)
 {
     while (1)
     {
+        adc_value = adc1_get_raw(ADC_CHANNEL);
+        volt =  volt*0.999  +  adc_value *(0.0008791)* 0.001;
+        if(!voltInit)
+        {
+            vTaskDelay(100 / portTICK_PERIOD_MS);
+            volt = adc_value *(0.0008791);
+            voltInit=true;
+        }
+        if(voltInit && volt<1.5)
+        {
+            battCount++;
+        }
+        if(battCount>200)
+        {
+            motrState=false;
+        }
+        else
+        {
+            battCount=0;
+        }
+        printf("ADC Value: %d Volt: %.2f\n", adc_value,volt);
         // printf("Yaw: %f, Pitch: %f, Roll: %f, dt: %f\n", yaw, pitch, roll, dt);
         // printf("%.2f,%.2f,%.2f\n",fax,fay,faz);
         // printf("%.2f,%.2f,%.2f\n", gx,-fdR,roll);
@@ -390,6 +424,9 @@ extern "C" void wifi_webserver_task(void* pvParameters);
 // Main application, called from a specific core
 extern "C" void app_main(void) 
 {
+    adc1_config_width(ADC_WIDTH);
+    adc1_config_channel_atten(ADC_CHANNEL, ADC_ATTEN);
+    
     init_i2c();
     init_ledc_timer();
     // Initialize 4 LEDC channels for 4 GPIO pins
