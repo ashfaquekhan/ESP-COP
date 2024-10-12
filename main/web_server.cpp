@@ -14,6 +14,7 @@ static const char *TAG = "esp32-webserver";
 
 extern int throt;
 extern float Rin,Pin,Yin;
+extern bool motrState;
 
 // Structure to hold joystick data
 typedef struct {
@@ -52,12 +53,13 @@ esp_err_t js_data_handler(httpd_req_t *req) {
     
     Rin=joystick_data.x2;
     Pin=joystick_data.y2;
-    throt=joystick_data.x;
-    Yin=joystick_data.y;
+    throt=joystick_data.y;
+    Yin=joystick_data.x;
+    motrState=isPowerOn;
 
-    // // Log the joystick values and power state
-    ESP_LOGI(TAG, "Joystick Values -> X: %d, Y: %d, X2: %d, Y2: %d, Power: %s", 
-             joystick_data.x, joystick_data.y, joystick_data.x2, joystick_data.y2, isPowerOn ? "ON" : "OFF");
+    // // // Log the joystick values and power state
+    // ESP_LOGI(TAG, "Joystick Values -> X: %d, Y: %d, X2: %d, Y2: %d, Power: %s", 
+    //          joystick_data.x, joystick_data.y, joystick_data.x2, joystick_data.y2, isPowerOn ? "ON" : "OFF");
 
     httpd_resp_send(req, "OK", 2);
     return ESP_OK;
