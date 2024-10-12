@@ -1,3 +1,3 @@
-idf_component_register(SRCS "main.cpp" "wifi_webserver.cpp"
+idf_component_register(SRCS "main.cpp" "web_server.cpp"
                     INCLUDE_DIRS "."
                     EMBED_FILES "index.html" "virtualjoystick.js")
