@@ -1,0 +1,140 @@
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, minimum-scale=1.0">
+    <style>
+        body {
+            overflow: hidden;
+            padding: 0;
+            margin: 0;
+            background-color: #BBB;
+        }
+        #info {
+            position: absolute;
+            top: 0px;
+            width: 100%;
+            padding: 5px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            font-size: 16px;
+        }
+        #container {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            padding: 0;
+            margin: 0;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+        }
+        #joystick-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+        }
+        .lock-toggle {
+            background: #333;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .lock-toggle.active {
+            background: #666;
+        }
+        .power-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .power-btn.active {
+            background: #2ecc71;
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    <div id="info">
+        <span id="result"></span>
+        <span id="result2"></span>
+    </div>
+    <div id="joystick-controls">
+        <button id="lock-x1" class="lock-toggle">Lock X1</button>
+        <button id="lock-y1" class="lock-toggle">Lock Y1</button>
+        <button id="lock-x2" class="lock-toggle">Lock X2</button>
+        <button id="lock-y2" class="lock-toggle">Lock Y2</button>
+        <button id="power" class="power-btn">OFF</button>
+    </div>
+    <script src="./virtualjoystick.js"></script>
+    <script>
+        var joystick1 = new VirtualJoystick({
+            container: document.getElementById("container"),
+            strokeStyle: 'orange',
+            limitStickTravel: true,
+            stickRadius: 120
+        });
+        joystick1.addEventListener('touchStartValidation', function(event) {
+            return event.changedTouches[0].pageX < window.innerWidth / 2;
+        });
+
+        var joystick2 = new VirtualJoystick({
+            container: document.getElementById("container"),
+            strokeStyle: 'cyan',
+            limitStickTravel: true,
+            stickRadius: 120
+        });
+        joystick2.addEventListener('touchStartValidation', function(event) {
+            return event.changedTouches[0].pageX >= window.innerWidth / 2;
+        });
+
+        var lockX1 = false, lockY1 = false, lockX2 = false, lockY2 = false;
+        var isPowerOn = false;
+
+        document.getElementById("lock-x1").addEventListener("click", function() {
+            lockX1 = !lockX1;
+            this.classList.toggle("active");
+        });
+        document.getElementById("lock-y1").addEventListener("click", function() {
+            lockY1 = !lockY1;
+            this.classList.toggle("active");
+        });
+        document.getElementById("lock-x2").addEventListener("click", function() {
+            lockX2 = !lockX2;
+            this.classList.toggle("active");
+        });
+        document.getElementById("lock-y2").addEventListener("click", function() {
+            lockY2 = !lockY2;
+            this.classList.toggle("active");
+        });
+        document.getElementById("power").addEventListener("click", function() {
+            isPowerOn = !isPowerOn;
+            this.classList.toggle("active");
+            this.innerHTML = isPowerOn ? "ON" : "OFF";
+        });
+
+        setInterval(function() {
+            if (!isPowerOn) return;
+
+            var x1 = lockX1 ? 0 : Math.round(joystick1.deltaX());
+            var y1 = lockY1 ? 0 : -Math.round(joystick1.deltaY());
+            var x2 = lockX2 ? 0 : Math.round(joystick2.deltaX());
+            var y2 = lockY2 ? 0 : -Math.round(joystick2.deltaY());
+
+            document.getElementById('result').innerHTML = `Orange X: ${x1} Y: ${y1}`;
+            document.getElementById('result2').innerHTML = `Cyan X: ${x2} Y: ${y2}`;
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('PUT', `./jsData.html?x=${x1}&y=${y1}&x2=${x2}&y2=${y2}`);
+            xhr.send();
+        }, 33);
+    </script>
+</body>
+</html>
