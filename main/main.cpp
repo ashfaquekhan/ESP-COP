@@ -169,81 +169,95 @@ void initfunc()
 }
 void taskfunc()
 {
+        // Calculate dt
         dt = TimeToSec() - last_time;
         last_time = TimeToSec();
-        // gpio_set_level(GPIO_NUM_11, 1); // Turn on the LED
+
         // Get scaled accelerometer and gyroscope values
         _getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
-        // // Update Madgwick filter with new data
-        // madgwick.updateIMU(gx, gy, gz, ax, ay, az, dt);
-        // roll  = madgwick.getRoll();
-        // pitch = madgwick.getPitch();
-        yaw   = gz;
-        // yaw   = madgwick.getYaw();
+        // Update Madgwick filter with new data
+        madgwick.updateIMU(gx, gy, gz, ax, ay, az, dt);
+        roll  = madgwick.getRoll();
+        pitch = madgwick.getPitch();
+        yaw   = gz;  // Optionally use madgwick.getYaw();
 
+        // Calculate outer loop errors for roll and pitch
+        float rollError = desiredRoll - roll;
+        float pitchError = desiredPitch - pitch;
+
+        // Outer loop PID for roll
+        iRollOuter += rollError * dt;
+        iRollOuter = CONSTRAIN(iRollOuter, -iOuterLimit, iOuterLimit);
+        float dRollOuter = (rollError - rollErrorPrev) / dt;
+        pSet = rollKp * rollError + rollKi * iRollOuter - rollKd * dRollOuter;
+        rollErrorPrev = rollError;
+
+        // Outer loop PID for pitch
+        iPitchOuter += pitchError * dt;
+        iPitchOuter = CONSTRAIN(iPitchOuter, -iOuterLimit, iOuterLimit);
+        float dPitchOuter = (pitchError - pitchErrorPrev) / dt;
+        rSet = pitchKp * pitchError + pitchKi * iPitchOuter - pitchKd * dPitchOuter;
+        pitchErrorPrev = pitchError;
+
+        // Inner loop remains similar
         clamp = throt < 20;
-        
-        errP = (pSet + ptrim + Pin) - gy;
-        iP = iPprv + errP*dt;
-        if(clamp){iP=0;} //clamp
-        iP = CONSTRAIN(iP,-iLimit,iLimit);//windup 
-        dP= (errP-errPprv)/dt;
-        LOW_PASS_FILTER(dP,fdP,fdPprv,alpha);
-        pPID = (pKp*errP + pKi*iP - pKd*fdP);         //scale 0.01(scale for 1)*50(max PWM) = 0.5
-        iPprv =iP;
-        errPprv=errP; 
 
-        errR = (rSet + rtrim + Rin) - gx;
-        iR = iRprv + errR*dt;
-        if(clamp){iR=0;}
-        iR = CONSTRAIN(iR,-iLimit,iLimit);
-        dR = (errR - errRprv)/dt;
-        LOW_PASS_FILTER(dR,fdR,fdRprv,alpha);
-        rPID = (rKp*errR + rKi*iR - rKd*fdR);    //scale 0.01(scale for 1)*50(max PWM) = 0.5
+        // Inner loop PID for roll rate
+        errP = pSet + ptrim + Pin - gy;
+        iP = iPprv + errP * dt;
+        if (clamp) { iP = 0; }
+        iP = CONSTRAIN(iP, -iLimit, iLimit);
+        dP = (errP - errPprv) / dt;
+        LOW_PASS_FILTER(dP, fdP, fdPprv, alpha);
+        pPID = (pKp * errP + pKi * iP - pKd * fdP);
+        iPprv = iP;
+        errPprv = errP;
+
+        // Inner loop PID for pitch rate
+        errR = rSet + rtrim + Rin - gx;
+        iR = iRprv + errR * dt;
+        if (clamp) { iR = 0; }
+        iR = CONSTRAIN(iR, -iLimit, iLimit);
+        dR = (errR - errRprv) / dt;
+        LOW_PASS_FILTER(dR, fdR, fdRprv, alpha);
+        rPID = (rKp * errR + rKi * iR - rKd * fdR);
         iRprv = iR;
-        errRprv=errR;
+        errRprv = errR;
 
-        errY = Yin+ySet - yaw;
-        iY = iYprv + errY;//*dt;
-        if(clamp){iY=0;}
-        iY = CONSTRAIN(iY,-iLimit,iLimit);
+        // Yaw control remains the same
+        errY = Yin + ySet - yaw;
+        iY = iYprv + errY;
+        if (clamp) { iY = 0; }
+        iY = CONSTRAIN(iY, -iLimit, iLimit);
         dY = (errY - errYprv);
-        yPID = (yKp*errY + yKi*iY - yKd*fdY);    //scale 0.01(scale for 1)*50(max PWM) = 0.5
+        yPID = (yKp * errY + yKi * iY - yKd * fdY);
         iYprv = iY;
         errYprv = errY;
-        
-        rPID=CONSTRAIN(rPID,-pwmxPID,pwmxPID);
-        pPID=CONSTRAIN(pPID,-pwmxPID,pwmxPID);
-        yPID=CONSTRAIN(yPID,-pwmxPID,pwmxPID);
-        // rPID=CONSTRAIN(rPID,0,pwmxPID);
-        // pPID=CONSTRAIN(pPID,0,pwmxPID);
-        // yPID=CONSTRAIN(yPID,0,pwmxPID);
 
-        m1 = throt + rPID - pPID + yPID ;
-        m2 = throt - rPID - pPID - yPID ;
-        m3 = throt - rPID + pPID + yPID ;
-        m4 = throt + rPID + pPID - yPID ;
+        // Constrain the outputs
+        rPID = CONSTRAIN(rPID, -pwmxPID, pwmxPID);
+        pPID = CONSTRAIN(pPID, -pwmxPID, pwmxPID);
+        yPID = CONSTRAIN(yPID, -pwmxPID, pwmxPID);
 
-        LOW_PASS_FILTER(m1,fm1,m1o,alphaM);
-        LOW_PASS_FILTER(m2,fm2,m2o,alphaM);
-        LOW_PASS_FILTER(m3,fm3,m3o,alphaM);
-        LOW_PASS_FILTER(m4,fm4,m4o,alphaM);
+        // Calculate motor outputs
+        m1 = throt + rPID - pPID + yPID;
+        m2 = throt - rPID - pPID - yPID;
+        m3 = throt - rPID + pPID + yPID;
+        m4 = throt + rPID + pPID - yPID;
 
-        // m1 = throt + rPID - pPID ;
-        // m2 = throt - rPID - pPID ;
-        // m3 = throt - rPID + pPID ;
-        // m4 = throt + rPID + pPID ;
+        // // Apply low-pass filtering to motor signals
+        // LOW_PASS_FILTER(m1, fm1, m1o, alphaM);
+        // LOW_PASS_FILTER(m2, fm2, m2o, alphaM);
+        // LOW_PASS_FILTER(m3, fm3, m3o, alphaM);
+        // LOW_PASS_FILTER(m4, fm4, m4o, alphaM);
 
-        // m1 = throt + rPID;
-        // m2 = throt - rPID;
-        // m3 = throt - rPID;
-        // m4 = throt + rPID;
+        // Constrain motor values to the desired range
+        m1 = CONSTRAIN(m1, 0, 250);
+        m2 = CONSTRAIN(m2, 0, 250);
+        m3 = CONSTRAIN(m3, 0, 250);
+        m4 = CONSTRAIN(m4, 0, 250);
 
-        m1 = CONSTRAIN(m1,0,255);
-        m2 = CONSTRAIN(m2,0,255);
-        m3 = CONSTRAIN(m3,0,255);
-        m4 = CONSTRAIN(m4,0,255);
 
         if(motrState)
         {
