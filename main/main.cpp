@@ -53,8 +53,8 @@ float dt;
 float ax, ay, az, gx, gy, gz;
 bool clamp = true;
         //P: 0.14 | I:0.0003 | D:0.08 
-float rKp=0.2,rKi=0.0003,rKd=0.089; 
-float pKp=0.2,pKi=0.0003,pKd=0.089;
+float rKp=0.2,rKi=0.0004,rKd=0.089; 
+float pKp=0.2,pKi=0.0004,pKd=0.089;
 float yKp=0.12,yKi=0.0005,yKd=0.0;
 
 float rtrim(0),ptrim(0);
@@ -78,7 +78,7 @@ float Rin,Pin,Yin;
 float rOff(3.0),pOff(3.0),yOff;
 float iLimit;
 int throt = 5; 
-float alpha(0.159); //0.015~0.035
+float alpha(0.3); //0.015~0.035
 // float alphaAcc(0.09);
 float period(0.001);
 float tKf(0.003);
@@ -182,7 +182,7 @@ void taskfunc()
 
         clamp = throt < 20;
         
-        errP = (pSet + ptrim) - pitch;
+        errP = (pSet + ptrim + Pin) - pitch;
         iP = iPprv + errP;//*dt;
         if(clamp){iP=0;} //clamp
         iP = CONSTRAIN(iP,-iLimit,iLimit);//windup 
@@ -192,7 +192,7 @@ void taskfunc()
         iPprv =iP;
         errPprv=errP; 
 
-        errR = (rSet + rtrim) - roll;
+        errR = (rSet + rtrim + Rin) - roll;
         iR = iRprv + errR;// *dt;
         if(clamp){iR=0;}
         iR = CONSTRAIN(iR,-iLimit,iLimit);
@@ -202,7 +202,7 @@ void taskfunc()
         iRprv = iR;
         errRprv=errR;
 
-        errY = ySet - yaw;
+        errY = Yin+ySet - yaw;
         iY = iYprv + errY;//*dt;
         if(clamp){iY=0;}
         iY = CONSTRAIN(iY,-iLimit,iLimit);
