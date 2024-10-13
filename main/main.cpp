@@ -89,8 +89,8 @@ bool motrState=false;
 int m1,m2,m3,m4;
 int m1s,m2s,m3s,m4s;
 double current_time, last_time;
-int pwmxPID=100;
-int pwmxPIDy=150;
+int pwmxPID=70;
+int pwmxPIDy=100;
 #define LOOP_RATE_MS 1  // Desired loop rate in MS(e.g., 100 ms)
 static esp_timer_handle_t timer; // Timer handle
 
@@ -182,21 +182,21 @@ void taskfunc()
 
         clamp = throt < 20;
         
-        errP = (pSet + ptrim + Pin) - pitch;
-        iP = iPprv + errP;//*dt;
+        errP = (pSet + ptrim + Pin) - gy;
+        iP = iPprv + errP*dt;
         if(clamp){iP=0;} //clamp
         iP = CONSTRAIN(iP,-iLimit,iLimit);//windup 
-        dP= gy;
+        dP= (errP-errPprv)/dt;
         LOW_PASS_FILTER(dP,fdP,fdPprv,alpha);
         pPID = (pKp*errP + pKi*iP - pKd*fdP);         //scale 0.01(scale for 1)*50(max PWM) = 0.5
         iPprv =iP;
         errPprv=errP; 
 
-        errR = (rSet + rtrim + Rin) - roll;
-        iR = iRprv + errR;// *dt;
+        errR = (rSet + rtrim + Rin) - gx;
+        iR = iRprv + errR*dt;
         if(clamp){iR=0;}
         iR = CONSTRAIN(iR,-iLimit,iLimit);
-        dR = gx;
+        dR = (errR - errRprv)/dt;
         LOW_PASS_FILTER(dR,fdR,fdRprv,alpha);
         rPID = (rKp*errR + rKi*iR - rKd*fdR);    //scale 0.01(scale for 1)*50(max PWM) = 0.5
         iRprv = iR;
@@ -215,15 +215,15 @@ void taskfunc()
         pPID=CONSTRAIN(pPID,-pwmxPID,pwmxPID);
         yPID=CONSTRAIN(yPID,-pwmxPID,pwmxPID);
 
-        m1 = throt + yPID - rPID + pPID ;
-        m2 = throt - yPID + rPID + pPID ;
-        m3 = throt + yPID + rPID - pPID ;
-        m4 = throt - yPID - rPID - pPID ;
+        // m1 = throt + yPID - rPID + pPID ;
+        // m2 = throt - yPID + rPID + pPID ;
+        // m3 = throt + yPID + rPID - pPID ;
+        // m4 = throt - yPID - rPID - pPID ;
 
-        // m1 = throt + rPID + pPID ;
-        // m2 = throt - rPID + pPID ;
-        // m3 = throt - rPID - pPID ;
-        // m4 = throt + rPID - pPID ;
+        m1 = throt + rPID + pPID ;
+        m2 = throt - rPID + pPID ;
+        m3 = throt - rPID - pPID ;
+        m4 = throt + rPID - pPID ;
 
         // m1 = throt + rPID;
         // m2 = throt - rPID;
@@ -410,19 +410,19 @@ void print_task(void *pvParameters)
         // printf("ADC Value: %d Volt: %.2f\n", adc_value,volt);
         // printf("Yaw: %f, Pitch: %f, Roll: %f, dt: %f\n", yaw, pitch, roll, dt);
         // printf("%.2f,%.2f,%.2f\n",fax,fay,faz);
-        // printf("%.2f,%.2f,%.2f\n", gx,-fdR,roll);
+        printf("%.2f,%.2f,%.2f,%.2f\n", gx,fdR,roll,rPID);
         // printf("%.2f,%.2f,%.2f,%.2f\n",pitch,roll,fdR,fdP);
         // printf("%.2f,%.2f,%.2f,%.2f\n",rKd*fdR,(rKi*iR + errR*rKp),gx,roll);
         //  printf("%.2f,%.2f\n",dP,fdP);
         //  printf("%.2f,%.2f\n",dR,fdR);
-        printf("%d,%.2f,%.2f,%.2f\n",throt,Rin,Pin,Yin);
+        // printf("%d,%.2f,%.2f,%.2f\n",throt,Rin,Pin,Yin);
         vTaskDelay(10/ portTICK_PERIOD_MS);
     }
 }
 
 // Function declarations from wifi_webserver.cpp
-// extern "C" void wifi_webserver_task(void* pvParameters);
-extern "C" void web_server_task(void *pvParameters);
+extern "C" void wifi_webserver_task(void* pvParameters);
+// extern "C" void web_server_task(void *pvParameters);
 
 // Main application, called from a specific core
 extern "C" void app_main(void) 
@@ -463,8 +463,8 @@ extern "C" void app_main(void)
 
     xTaskCreatePinnedToCore(print_task, "print_task", 4096, NULL, 5, NULL, 1);
 
-    // xTaskCreatePinnedToCore(wifi_webserver_task, "wifi_webserver_task", 4096, NULL, 5, NULL, 1);
-    xTaskCreatePinnedToCore(web_server_task, "web_server_task", 8192, NULL, 5, NULL,1);
+    xTaskCreatePinnedToCore(wifi_webserver_task, "wifi_webserver_task", 4096, NULL, 5, NULL, 1);
+    // xTaskCreatePinnedToCore(web_server_task, "web_server_task", 8192, NULL, 5, NULL,1);
 }
 
 
