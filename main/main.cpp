@@ -53,8 +53,8 @@ float dt;
 float ax, ay, az, gx, gy, gz;
 bool clamp = true;
         //P: 0.14 | I:0.0003 | D:0.08 
-float rKp=0.2,rKi=0.0004,rKd=0.089; 
-float pKp=0.2,pKi=0.0004,pKd=0.089;
+float rKp=0.0,rKi=0.0,rKd=0.0; 
+float pKp=0.0,pKi=0.0,pKd=0.0;
 float yKp=0.12,yKi=0.0005,yKd=0.0;
 
 float rtrim(0),ptrim(0);
@@ -78,15 +78,17 @@ float Rin,Pin,Yin;
 float rOff(3.0),pOff(3.0),yOff;
 float iLimit;
 int throt = 5; 
-float alpha(0.3); //0.015~0.035
+float alpha(0.006); //0.015~0.035
 // float alphaAcc(0.09);
 float period(0.001);
 float tKf(0.003);
-// float alphaC = 0.98; // Complementary filter constant
+float alphaM = 0.1;
 // float dtC = 0.0001;    // Time step (in seconds)
 
 bool motrState=false;
 int m1,m2,m3,m4;
+int fm1,fm2,fm3,fm4;
+int m1o,m2o,m3o,m4o;
 int m1s,m2s,m3s,m4s;
 double current_time, last_time;
 int pwmxPID=70;
@@ -163,7 +165,7 @@ void initfunc()
     pSet=-0;
     rSet=-0;
     ySet=0;
-    iLimit=50000;
+    iLimit=100000;
 }
 void taskfunc()
 {
@@ -173,10 +175,10 @@ void taskfunc()
         // Get scaled accelerometer and gyroscope values
         _getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
-        // Update Madgwick filter with new data
-        madgwick.updateIMU(gx, gy, gz, ax, ay, az, dt);
-        roll  = madgwick.getRoll();
-        pitch = madgwick.getPitch();
+        // // Update Madgwick filter with new data
+        // madgwick.updateIMU(gx, gy, gz, ax, ay, az, dt);
+        // roll  = madgwick.getRoll();
+        // pitch = madgwick.getPitch();
         yaw   = gz;
         // yaw   = madgwick.getYaw();
 
@@ -214,16 +216,24 @@ void taskfunc()
         rPID=CONSTRAIN(rPID,-pwmxPID,pwmxPID);
         pPID=CONSTRAIN(pPID,-pwmxPID,pwmxPID);
         yPID=CONSTRAIN(yPID,-pwmxPID,pwmxPID);
+        // rPID=CONSTRAIN(rPID,0,pwmxPID);
+        // pPID=CONSTRAIN(pPID,0,pwmxPID);
+        // yPID=CONSTRAIN(yPID,0,pwmxPID);
 
-        // m1 = throt + yPID - rPID + pPID ;
-        // m2 = throt - yPID + rPID + pPID ;
-        // m3 = throt + yPID + rPID - pPID ;
-        // m4 = throt - yPID - rPID - pPID ;
+        m1 = throt + rPID - pPID + yPID ;
+        m2 = throt - rPID - pPID - yPID ;
+        m3 = throt - rPID + pPID + yPID ;
+        m4 = throt + rPID + pPID - yPID ;
 
-        m1 = throt + rPID + pPID ;
-        m2 = throt - rPID + pPID ;
-        m3 = throt - rPID - pPID ;
-        m4 = throt + rPID - pPID ;
+        LOW_PASS_FILTER(m1,fm1,m1o,alphaM);
+        LOW_PASS_FILTER(m2,fm2,m2o,alphaM);
+        LOW_PASS_FILTER(m3,fm3,m3o,alphaM);
+        LOW_PASS_FILTER(m4,fm4,m4o,alphaM);
+
+        // m1 = throt + rPID - pPID ;
+        // m2 = throt - rPID - pPID ;
+        // m3 = throt - rPID + pPID ;
+        // m4 = throt + rPID + pPID ;
 
         // m1 = throt + rPID;
         // m2 = throt - rPID;
@@ -410,7 +420,7 @@ void print_task(void *pvParameters)
         // printf("ADC Value: %d Volt: %.2f\n", adc_value,volt);
         // printf("Yaw: %f, Pitch: %f, Roll: %f, dt: %f\n", yaw, pitch, roll, dt);
         // printf("%.2f,%.2f,%.2f\n",fax,fay,faz);
-        printf("%.2f,%.2f,%.2f,%.2f\n", gx,fdR,roll,rPID);
+        printf("%.2f,%.2f,%.2f\n",rPID,dR,fdR);
         // printf("%.2f,%.2f,%.2f,%.2f\n",pitch,roll,fdR,fdP);
         // printf("%.2f,%.2f,%.2f,%.2f\n",rKd*fdR,(rKi*iR + errR*rKp),gx,roll);
         //  printf("%.2f,%.2f\n",dP,fdP);

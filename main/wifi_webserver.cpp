@@ -65,7 +65,7 @@ const char* html_content = "<!DOCTYPE html>\
 </div>\
 <div>\
   <label for='input4'>Value I:</label>\
-  <input type='number' id='input4' value='0.00001' step='0.00001' />\
+  <input type='number' id='input4' value='0.00001' step='0.0001' />\
   <button onclick='sendValue(4)'>Send</button><br><br>\
 </div>\
 <div>\
