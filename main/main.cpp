@@ -461,7 +461,7 @@ extern "C" void app_main(void)
     xTaskCreatePinnedToCore(&mpu6050_task, "mpu6050_task", 1024 * 8, NULL, 5, NULL, 0);
     // xTaskCreatePinnedToCore(&mpu6050_task_direct, "mpu6050_task_direct", 1024 * 8, NULL, 5, NULL, 0);
 
-    // xTaskCreatePinnedToCore(print_task, "print_task", 4096, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(print_task, "print_task", 4096, NULL, 5, NULL, 1);
 
     // xTaskCreatePinnedToCore(wifi_webserver_task, "wifi_webserver_task", 4096, NULL, 5, NULL, 1);
     xTaskCreatePinnedToCore(web_server_task, "web_server_task", 8192, NULL, 5, NULL,1);

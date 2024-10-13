@@ -12,6 +12,11 @@
 
 static const char *TAG = "esp32-webserver";
 
+#define MAP_1(x, in_min, in_max, out_min, out_max) \
+    (((x) < (in_min)) ? (out_min) : \
+    ((x) > (in_max)) ? (out_max) : \
+    ((long)((x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min)))
+       
 extern int throt;
 extern float Rin,Pin,Yin;
 extern bool motrState;
@@ -51,10 +56,13 @@ esp_err_t js_data_handler(httpd_req_t *req) {
         isPowerOn = (strcmp(power_param, "ON") == 0);
     }
     
-    Rin=joystick_data.x2;
-    Pin=joystick_data.y2;
-    throt=joystick_data.y;
-    Yin=joystick_data.x;
+    if(abs(joystick_data.x2) > 15){Rin=   MAP_1(joystick_data.x2,-100,100,-45,45);}
+    else{Rin=0;}
+    if(abs(joystick_data.y2) > 15){Pin=   MAP_1(joystick_data.y2,-100,100,-45,45);}
+    else{Pin=0;}
+    throt= MAP_1(joystick_data.y ,5,100,0,250); 
+    if(abs(joystick_data.x) > 20){Yin=   MAP_1(joystick_data.x ,-100,100,-20,20);}
+    else{Yin=0;}
     motrState=isPowerOn;
 
     // // // Log the joystick values and power state
