@@ -200,7 +200,7 @@ void taskfunc()
         // yaw   = madgwick.getYaw();
         
         //Pitch Angle Outer PID
-        angPerr = pitch - (angPset);
+        angPerr = pitch - (-angPset);
         IangP = IangPprev + (angPerr * dt);
         IangP = CONSTRAIN(IangP,-iLimit,iLimit);
         if(clamp){IangP=0;} //clamp
@@ -208,7 +208,7 @@ void taskfunc()
         pPIDang = pKpAng*angPerr + pKiAng*IangP;
         
         //Roll Angle Outer PID
-        angRerr = roll - (angRset);
+        angRerr = roll - (-angRset);
         IangR = IangRprev + (angRerr * dt);
         IangR = CONSTRAIN(IangR,-iLimit,iLimit);
         if(clamp){IangR=0;} //clamp
@@ -287,6 +287,9 @@ void taskfunc()
 
         if(motrState)
         {
+            angPset=pitch;
+            angRset=roll;
+
             ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, m1);
             ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, m2);
             ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2, m3);
