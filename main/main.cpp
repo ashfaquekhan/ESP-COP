@@ -59,7 +59,7 @@ float yKp=0.12,yKi=0.0005,yKd=0.0;
 float alpha(0.003); //0.015~0.035
 
 float rtrim(0),ptrim(0);
-
+//Rate Controller
 float errR,errP,errY;
 float errRprv(0.0),errPprv(0.0),errYprv(0.0);
 float iR,iP,iY;
@@ -74,9 +74,24 @@ float prvfax,prvfay,prvfaz;
 float prvfgx,prvfgy,prvfgz;
 
 float rPID,pPID,yPID;
-float rSet,pSet,ySet;
+
+//Angle Controller
+float angPset(0),angRset(0);
+float angPerr,angRerr;
+float IangP,IangR;
+float IangPprev,IangRprev;
+float rKpAng=5,rKiAng(0.0);
+float pKpAng=5,pKiAng(0.0);
+float alphaO(0.9);
+
+float rPIDang,pPIDang;
+float rPIDangPrev,pPIDangPrev;
+float rPIDangFil,pPIDangFil;
+
+
 float Rin,Pin,Yin;
 float rOff(3.0),pOff(3.0),yOff;
+float rSet,pSet,ySet;
 float iLimit;
 int throt = 5; 
 
@@ -94,6 +109,7 @@ int m1s,m2s,m3s,m4s;
 double current_time, last_time;
 int pwmxPID=70;
 int pwmxPIDy=100;
+int pwmxANG=70;
 #define LOOP_RATE_MS 1  // Desired loop rate in MS(e.g., 100 ms)
 static esp_timer_handle_t timer; // Timer handle
 
@@ -177,15 +193,37 @@ void taskfunc()
         _getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
         // // Update Madgwick filter with new data
-        // madgwick.updateIMU(gx, gy, gz, ax, ay, az, dt);
-        // roll  = madgwick.getRoll();
-        // pitch = madgwick.getPitch();
+        madgwick.updateIMU(gx, gy, gz, ax, ay, az, dt);
+        roll  = madgwick.getRoll();
+        pitch = madgwick.getPitch();
         yaw   = gz;
         // yaw   = madgwick.getYaw();
+        
+        //Pitch Angle Outer PID
+        angPerr = pitch - (angPset);
+        IangP = IangPprev + (angPerr * dt);
+        IangP = CONSTRAIN(IangP,-iLimit,iLimit);
+        if(clamp){IangP=0;} //clamp
+        IangPprev=IangP;
+        pPIDang = pKpAng*angPerr + pKiAng*IangP;
+        
+        //Roll Angle Outer PID
+        angRerr = roll - (angRset);
+        IangR = IangRprev + (angRerr * dt);
+        IangR = CONSTRAIN(IangR,-iLimit,iLimit);
+        if(clamp){IangR=0;} //clamp
+        IangRprev=IangR;
+        rPIDang = rKpAng*angRerr + rKiAng*IangR ;
+        
+        rPIDang=CONSTRAIN(rPIDang,-pwmxANG,pwmxANG);
+        pPIDang=CONSTRAIN(pPIDang,-pwmxANG,pwmxANG);
+
+        LOW_PASS_FILTER(rPIDang,rPIDangFil,rPIDangPrev,alphaO);
+        LOW_PASS_FILTER(pPIDang,pPIDangFil,pPIDangPrev,alphaO);
 
         clamp = throt < 20;
         
-        errP = (pSet + ptrim + Pin) - gy;
+        errP = (pPIDangFil) - gy;
         iP = iPprv + errP*dt;
         if(clamp){iP=0;} //clamp
         iP = CONSTRAIN(iP,-iLimit,iLimit);//windup 
@@ -195,7 +233,7 @@ void taskfunc()
         iPprv =iP;
         errPprv=errP; 
 
-        errR = (rSet + rtrim + Rin) - gx;
+        errR = (rPIDangFil) - gx;
         iR = iRprv + errR*dt;
         if(clamp){iR=0;}
         iR = CONSTRAIN(iR,-iLimit,iLimit);
@@ -205,7 +243,7 @@ void taskfunc()
         iRprv = iR;
         errRprv=errR;
 
-        errY = Yin+ySet - yaw;
+        errY = Yin + ySet - yaw;
         iY = iYprv + errY;//*dt;
         if(clamp){iY=0;}
         iY = CONSTRAIN(iY,-iLimit,iLimit);
@@ -422,7 +460,7 @@ void print_task(void *pvParameters)
         // printf("ADC Value: %d Volt: %.2f\n", adc_value,volt);
         // printf("Yaw: %f, Pitch: %f, Roll: %f, dt: %f\n", yaw, pitch, roll, dt);
         // printf("%.2f,%.2f,%.2f\n",fax,fay,faz);
-        printf("%.2f,%.2f,%.2f\n",rPID,dR,fdR);
+        printf("%.2f,%.2f,%.2f\n",rPIDang,rPIDangFil,rPID);
         // printf("%.2f,%.2f,%.2f,%.2f\n",pitch,roll,fdR,fdP);
         // printf("%.2f,%.2f,%.2f,%.2f\n",rKd*fdR,(rKi*iR + errR*rKp),gx,roll);
         //  printf("%.2f,%.2f\n",dP,fdP);

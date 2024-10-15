@@ -19,6 +19,12 @@ extern float yKp, yKi, yKd;
 float Kd,Ki,Kp;
 extern float iP, iR, iY;
 
+extern float rKpAng;
+extern float pKpAng;
+extern float alphaO;
+extern float rKiAng; 
+extern float pKiAng;
+
 extern float rtrim,ptrim;
 
 extern int throt;
@@ -40,7 +46,6 @@ bool extern motrState;  // Boolean flag for start/stop
 float slider6_value = rtrim; // New slider for yKp
 float slider7_value = ptrim; // New slider for yKi
 
-// HTML content for the webpage with input fields, buttons, and start/stop control
 const char* html_content = "<!DOCTYPE html>\
 <html>\
 <head>\
@@ -84,6 +89,31 @@ const char* html_content = "<!DOCTYPE html>\
   <button onclick='sendValue(7)'>Send</button><br><br>\
 </div>\
 <div>\
+  <label for='input8'>Roll Kp Angle:</label>\
+  <input type='number' id='input8' value='0.2' step='0.01' />\
+  <button onclick='sendValue(8)'>Send</button><br><br>\
+</div>\
+<div>\
+  <label for='input9'>Pitch Kp Angle:</label>\
+  <input type='number' id='input9' value='0.2' step='0.01' />\
+  <button onclick='sendValue(9)'>Send</button><br><br>\
+</div>\
+<div>\
+  <label for='input10'>AlphaO:</label>\
+  <input type='number' id='input10' value='0.9' step='0.01' />\
+  <button onclick='sendValue(10)'>Send</button><br><br>\
+</div>\
+<div>\
+  <label for='input11'>Roll Ki Angle:</label>\
+  <input type='number' id='input11' value='0.01' step='0.001' />\
+  <button onclick='sendValue(11)'>Send</button><br><br>\
+</div>\
+<div>\
+  <label for='input12'>Pitch Ki Angle:</label>\
+  <input type='number' id='input12' value='0.01' step='0.001' />\
+  <button onclick='sendValue(12)'>Send</button><br><br>\
+</div>\
+<div>\
   <button onclick='toggleStartStop()' id='startStopBtn'>Start</button><br><br>\
 </div>\
 <script>\
@@ -117,6 +147,11 @@ function fetchValues() {\
             document.getElementById('input5').value = data.Kd;\
             document.getElementById('input6').value = data.rtrim;\
             document.getElementById('input7').value = data.ptrim;\
+            document.getElementById('input8').value = data.rKpAng;\
+            document.getElementById('input9').value = data.pKpAng;\
+            document.getElementById('input10').value = data.alphaO;\
+            document.getElementById('input11').value = data.rKiAng;\
+            document.getElementById('input12').value = data.pKiAng;\
         }\
     };\
     xhr.send();\
@@ -125,6 +160,7 @@ window.onload = fetchValues;\
 </script>\
 </body>\
 </html>";
+
 
 // HTTP GET handler for the root page
 esp_err_t get_handler(httpd_req_t *req) {
@@ -135,12 +171,8 @@ esp_err_t get_handler(httpd_req_t *req) {
 esp_err_t get_values_handler(httpd_req_t *req) {
     char response[256];
     snprintf(response, sizeof(response), 
-             "{\"throt\": %d, \"alpha\": %.3f, \"Kp\": %.3f, \"Ki\": %.5f, \"Kd\": %.3f, \"rtrim\": %.1f, \"ptrim\": %.1f}", 
-             throt, alpha, Kp, Ki, Kd, rtrim, ptrim);
-
-    // snprintf(response, sizeof(response), 
-    //          "{\"throt\": %d, \"alpha\": %.3f, \"pKp\": %.3f, \"pKi\": %.4f, \"pKd\": %.3f, \"rtrim\": %.1f, \"ptrim\": %.1f}", 
-    //          throt, alpha, pKp, pKi, pKd, rtrim, ptrim);
+             "{\"throt\": %d, \"alpha\": %.3f, \"Kp\": %.3f, \"Ki\": %.5f, \"Kd\": %.3f, \"rtrim\": %.1f, \"ptrim\": %.1f, \"rKpAng\": %.2f, \"pKpAng\": %.2f, \"alphaO\": %.2f, \"rKiAng\": %.3f, \"pKiAng\": %.3f}", 
+             throt, alpha, Kp, Ki, Kd, rtrim, ptrim, rKpAng, pKpAng, alphaO, rKiAng, pKiAng);
 
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
@@ -173,6 +205,12 @@ esp_err_t slider_handler(httpd_req_t *req) {
                 // case 5: slider5_value = value; Kd=yKd = value; break;
                 case 6: slider6_value = value; rtrim = value; break;
                 case 7: slider7_value = value; ptrim = value; break;
+                case 8: rKpAng = value; break;
+                case 9: pKpAng = value; break;
+                case 10: alphaO = value; break;
+                case 11: rKiAng = value; break;
+                case 12: pKiAng = value; break;
+
                 default: break;
             }
         }
