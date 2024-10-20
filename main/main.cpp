@@ -74,6 +74,8 @@ float prvfax,prvfay,prvfaz;
 float prvfgx,prvfgy,prvfgz;
 
 float rPID,pPID,yPID;
+float rPIDf,pPIDf,yPIDf;
+float rPIDprv,pPIDprv,yPIDprv;
 
 //Angle Controller
 float angPset(0),angRset(0);
@@ -107,7 +109,7 @@ int fm1,fm2,fm3,fm4;
 int m1o,m2o,m3o,m4o;
 int m1s,m2s,m3s,m4s;
 double current_time, last_time;
-int pwmxPID=70;
+int pwmxPID=100;
 int pwmxPIDy=100;
 int pwmxANG=70;
 #define LOOP_RATE_MS 1  // Desired loop rate in MS(e.g., 100 ms)
@@ -200,7 +202,7 @@ void taskfunc()
         // yaw   = madgwick.getYaw();
         
         //Pitch Angle Outer PID
-        angPerr = pitch - (-angPset);
+        angPerr =(angPset - Pin) - pitch;
         IangP = IangPprev + (angPerr * dt);
         IangP = CONSTRAIN(IangP,-iLimit,iLimit);
         if(clamp){IangP=0;} //clamp
@@ -208,7 +210,7 @@ void taskfunc()
         pPIDang = pKpAng*angPerr + pKiAng*IangP;
         
         //Roll Angle Outer PID
-        angRerr = roll - (-angRset);
+        angRerr = (angRset - Rin) - roll;
         IangR = IangRprev + (angRerr * dt);
         IangR = CONSTRAIN(IangR,-iLimit,iLimit);
         if(clamp){IangR=0;} //clamp
@@ -218,12 +220,12 @@ void taskfunc()
         rPIDang=CONSTRAIN(rPIDang,-pwmxANG,pwmxANG);
         pPIDang=CONSTRAIN(pPIDang,-pwmxANG,pwmxANG);
 
-        LOW_PASS_FILTER(rPIDang,rPIDangFil,rPIDangPrev,alphaO);
-        LOW_PASS_FILTER(pPIDang,pPIDangFil,pPIDangPrev,alphaO);
+        // LOW_PASS_FILTER(rPIDang,rPIDangFil,rPIDangPrev,alphaO);
+        // LOW_PASS_FILTER(pPIDang,pPIDangFil,pPIDangPrev,alphaO);
 
         clamp = throt < 20;
         
-        errP = (pPIDangFil) - gy;
+        errP = (pPIDang) - gy;
         iP = iPprv + errP*dt;
         if(clamp){iP=0;} //clamp
         iP = CONSTRAIN(iP,-iLimit,iLimit);//windup 
@@ -233,7 +235,7 @@ void taskfunc()
         iPprv =iP;
         errPprv=errP; 
 
-        errR = (rPIDangFil) - gx;
+        errR = (rPIDang) - gx;
         iR = iRprv + errR*dt;
         if(clamp){iR=0;}
         iR = CONSTRAIN(iR,-iLimit,iLimit);
@@ -256,24 +258,28 @@ void taskfunc()
         pPID=CONSTRAIN(pPID,-pwmxPID,pwmxPID);
         yPID=CONSTRAIN(yPID,-pwmxPID,pwmxPID);
 
+        LOW_PASS_FILTER(rPID,rPIDf,rPIDprv,alphaO);
+        LOW_PASS_FILTER(yPID,yPIDf,yPIDprv,alphaO);
+        LOW_PASS_FILTER(pPID,pPIDf,pPIDprv,alphaO);
+
         // rPID=CONSTRAIN(rPID,0,pwmxPID);
         // pPID=CONSTRAIN(pPID,0,pwmxPID);
         // yPID=CONSTRAIN(yPID,0,pwmxPID);
 
-        m1 = throt + rPID - pPID + yPID ;
-        m2 = throt - rPID - pPID - yPID ;
-        m3 = throt - rPID + pPID + yPID ;
-        m4 = throt + rPID + pPID - yPID ;
+        // m1 = throt + rPID - pPID + yPID ;
+        // m2 = throt - rPID - pPID - yPID ;
+        // m3 = throt - rPID + pPID + yPID ;
+        // m4 = throt + rPID + pPID - yPID ;
 
-        LOW_PASS_FILTER(m1,fm1,m1o,alphaM);
-        LOW_PASS_FILTER(m2,fm2,m2o,alphaM);
-        LOW_PASS_FILTER(m3,fm3,m3o,alphaM);
-        LOW_PASS_FILTER(m4,fm4,m4o,alphaM);
+        m1 = throt + rPIDf - pPIDf + yPIDf ;
+        m2 = throt - rPIDf - pPIDf - yPIDf ;
+        m3 = throt - rPIDf + pPIDf + yPIDf ;
+        m4 = throt + rPIDf + pPIDf - yPIDf ;
 
-        // m1 = throt + rPID - pPID ;
-        // m2 = throt - rPID - pPID ;
-        // m3 = throt - rPID + pPID ;
-        // m4 = throt + rPID + pPID ;
+        // m1 = throt - pPID ;
+        // m2 = throt - pPID ;
+        // m3 = throt + pPID ;
+        // m4 = throt + pPID ;
 
         // m1 = throt + rPID;
         // m2 = throt - rPID;
@@ -287,9 +293,6 @@ void taskfunc()
 
         if(motrState)
         {
-            angPset=pitch;
-            angRset=roll;
-
             ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, m1);
             ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, m2);
             ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2, m3);
@@ -463,7 +466,7 @@ void print_task(void *pvParameters)
         // printf("ADC Value: %d Volt: %.2f\n", adc_value,volt);
         // printf("Yaw: %f, Pitch: %f, Roll: %f, dt: %f\n", yaw, pitch, roll, dt);
         // printf("%.2f,%.2f,%.2f\n",fax,fay,faz);
-        printf("%.2f,%.2f,%.2f\n",rPIDang,rPIDangFil,rPID);
+        printf("%.2f,%.2f,%.2f\n",pPIDf,pPID,pitch);
         // printf("%.2f,%.2f,%.2f,%.2f\n",pitch,roll,fdR,fdP);
         // printf("%.2f,%.2f,%.2f,%.2f\n",rKd*fdR,(rKi*iR + errR*rKp),gx,roll);
         //  printf("%.2f,%.2f\n",dP,fdP);

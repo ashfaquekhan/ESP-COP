@@ -26,6 +26,8 @@ extern float rKiAng;
 extern float pKiAng;
 
 extern float rtrim,ptrim;
+extern float angPset,angRset;
+extern float roll,pitch,yaw;
 
 extern int throt;
 extern float tKf;
@@ -214,6 +216,7 @@ esp_err_t slider_handler(httpd_req_t *req) {
                 default: break;
             }
         }
+
         free(buf);
     }
     httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
@@ -223,6 +226,8 @@ esp_err_t slider_handler(httpd_req_t *req) {
 // HTTP GET handler for toggling start/stop
 esp_err_t toggle_start_stop_handler(httpd_req_t *req) {
     motrState = !motrState;  // Toggle the boolean value
+    angRset = roll;
+    angPset = pitch;
     ESP_LOGI(TAG, "System %s", motrState ? "Started" : "Stopped");
     httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
