@@ -1664,6 +1664,36 @@ CONFIG_WPA_MBEDTLS_TLS_CLIENT=y
 # CONFIG_WPA_11R_SUPPORT is not set
 # CONFIG_WPA_WPS_SOFTAP_REGISTRAR is not set
 # end of Supplicant
+
+#
+# IMU Sensor Selection
+#
+# CONFIG_SENSOR_BMI220 is not set
+CONFIG_SENSOR_BMI270=y
+# end of IMU Sensor Selection
+
+#
+# CMake Utilities
+#
+# CONFIG_CU_RELINKER_ENABLE is not set
+# CONFIG_CU_DIAGNOSTICS_COLOR_NEVER is not set
+CONFIG_CU_DIAGNOSTICS_COLOR_ALWAYS=y
+# CONFIG_CU_DIAGNOSTICS_COLOR_AUTO is not set
+# CONFIG_CU_GCC_LTO_ENABLE is not set
+# CONFIG_CU_GCC_STRING_1BYTE_ALIGN is not set
+# end of CMake Utilities
+
+#
+# Bus Options
+#
+
+#
+# I2C Bus Options
+#
+CONFIG_I2C_BUS_DYNAMIC_CONFIG=y
+CONFIG_I2C_MS_TO_WAIT=200
+# end of I2C Bus Options
+# end of Bus Options
 # end of Component config
 
 # Deprecated options for backward compatibility
