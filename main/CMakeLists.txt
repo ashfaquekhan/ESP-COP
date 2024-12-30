@@ -8,9 +8,5 @@
 
 idf_component_register(
     SRCS "main.cpp" 
-         "wifi_webserver.cpp"
-         "flight_controller.cpp"
-         "motor_control.cpp"
-         "imu.cpp"
-    INCLUDE_DIRS "." "includes"
+    INCLUDE_DIRS "." 
 )
