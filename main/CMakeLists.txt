@@ -2,5 +2,15 @@
 #                     INCLUDE_DIRS "."
 #                     EMBED_FILES "index.html" "virtualjoystick.js")
 
-idf_component_register(SRCS "main.cpp" "wifi_webserver.cpp"
-                    INCLUDE_DIRS ".")
+# idf_component_register(SRCS "main.cpp" "wifi_webserver.cpp"
+#                     INCLUDE_DIRS "." )
+
+
+idf_component_register(
+    SRCS "main.cpp" 
+         "wifi_webserver.cpp"
+         "flight_controller.cpp"
+         "motor_control.cpp"
+         "imu.cpp"
+    INCLUDE_DIRS "." "includes"
+)
